@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Models;
+
+use App\Support\Octram\Traits\HasCode;
+use Illuminate\Database\Eloquent\Model;
+
+class Category extends Model
+{
+    use HasCode;
+
+    protected static string $codePrefix = 'CAT';
+
+    protected $fillable = [
+        'code',
+        'name',
+        'name_en',
+        'description',
+        'active',
+    ];
+}
