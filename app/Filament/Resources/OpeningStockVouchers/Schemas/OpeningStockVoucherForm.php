@@ -13,7 +13,11 @@ use Filament\Schemas\Schema;
 
 class OpeningStockVoucherForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(
+        Schema $schema,
+        array $headerComponents = [],
+        string $dateField = 'voucher_date',
+    ): Schema
     {
         return $schema
             ->components([
@@ -25,7 +29,7 @@ class OpeningStockVoucherForm
                             ->label('رقم المستند')
                             ->content(fn ($record) => $record?->code ?? 'سيتم إنشاؤه تلقائياً'),
 
-                        DatePicker::make('voucher_date')
+                        DatePicker::make($dateField)
                             ->label('التاريخ')
                             ->required()
                             ->default(now()),
@@ -36,6 +40,8 @@ class OpeningStockVoucherForm
                             ->searchable()
                             ->preload()
                             ->required(),
+
+                        ...$headerComponents,
 
                     ]),
 

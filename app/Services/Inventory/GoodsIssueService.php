@@ -2,17 +2,17 @@
 
 namespace App\Services\Inventory;
 
-use App\Models\OpeningStockVoucher;
+use App\Models\GoodsIssueVoucher;
 use App\Models\StockTransaction;
 
-class OpeningStockService
+class GoodsIssueService
 {
     public function __construct(
         private readonly InventoryService $inventoryService,
     ) {
     }
 
-    public function post(OpeningStockVoucher $voucher): void
+    public function post(GoodsIssueVoucher $voucher): void
     {
         $voucher->load('items');
 
@@ -21,7 +21,7 @@ class OpeningStockService
             $voucher->warehouse_id,
             $voucher->voucher_date,
             $voucher->notes,
-            StockTransaction::TYPE_OPENING,
+            StockTransaction::TYPE_SALE,
             $voucher->items,
         );
 

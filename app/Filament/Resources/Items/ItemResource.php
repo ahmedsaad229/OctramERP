@@ -1,43 +1,43 @@
 <?php
 
-namespace App\Filament\Resources\Warehouses;
+namespace App\Filament\Resources\Items;
 
-use App\Filament\Resources\Warehouses\Pages\CreateWarehouse;
-use App\Filament\Resources\Warehouses\Pages\EditWarehouse;
-use App\Filament\Resources\Warehouses\Pages\ListWarehouses;
-use App\Filament\Resources\Warehouses\Schemas\WarehouseForm;
-use App\Filament\Resources\Warehouses\Tables\WarehousesTable;
-use App\Models\Warehouse;
+use App\Filament\Resources\Items\Pages\CreateItem;
+use App\Filament\Resources\Items\Pages\EditItem;
+use App\Filament\Resources\Items\Pages\ListItems;
+use App\Filament\Resources\Items\Schemas\ItemForm;
+use App\Filament\Resources\Items\Tables\ItemsTable;
+use App\Models\Item;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class WarehouseResource extends Resource
+class ItemResource extends Resource
 {
-    protected static ?string $model = Warehouse::class;
+    protected static ?string $model = Item::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationLabel = 'المخازن';
+    protected static ?string $navigationLabel = 'الأصناف';
 
-    protected static ?string $modelLabel = 'مخزن';
+    protected static ?string $modelLabel = 'صنف';
 
-    protected static ?string $pluralModelLabel = 'المخازن';
+    protected static ?string $pluralModelLabel = 'الأصناف';
 
     protected static string|\UnitEnum|null $navigationGroup = 'إدارة المخزون';
 
     public static function form(Schema $schema): Schema
     {
-        return WarehouseForm::configure($schema);
+        return ItemForm::configure($schema);
     }
 
     public static function table(Table $table): Table
     {
-        return WarehousesTable::configure($table);
+        return ItemsTable::configure($table);
     }
 
     public static function getRelations(): array
@@ -48,9 +48,9 @@ class WarehouseResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListWarehouses::route('/'),
-            'create' => CreateWarehouse::route('/create'),
-            'edit' => EditWarehouse::route('/{record}/edit'),
+            'index' => ListItems::route('/'),
+            'create' => CreateItem::route('/create'),
+            'edit' => EditItem::route('/{record}/edit'),
         ];
     }
 }

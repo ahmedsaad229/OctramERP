@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Octram\Traits\HasCode;
+use App\Services\DocumentNumberService;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -11,6 +12,8 @@ class OpeningStockVoucher extends BaseModel
     use HasCode;
 
     protected static string $codePrefix = 'OSV';
+
+    protected static string $documentType = DocumentNumberService::OPENING_STOCK;
 
     protected $fillable = [
         'code',

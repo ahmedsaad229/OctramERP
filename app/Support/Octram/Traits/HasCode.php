@@ -2,6 +2,8 @@
 
 namespace App\Support\Octram\Traits;
 
+use App\Services\DocumentNumberService;
+
 trait HasCode
 {
     protected static function bootHasCode(): void
@@ -9,6 +11,12 @@ trait HasCode
         static::creating(function ($model) {
 
             if (! empty($model->code)) {
+                return;
+            }
+
+            if (property_exists(static::class, 'documentType')) {
+                $model->code = app(DocumentNumberService::class)->generate(static::$documentType);
+
                 return;
             }
 

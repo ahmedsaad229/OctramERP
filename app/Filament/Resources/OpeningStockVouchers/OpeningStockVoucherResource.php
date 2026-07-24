@@ -28,7 +28,7 @@ class OpeningStockVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'مستندات أول المدة';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'إدارة المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
 
     protected static ?int $navigationSort = 1;
 
