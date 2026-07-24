@@ -15,6 +15,7 @@ class DocumentNumberService
     public const OPENING_STOCK = 'opening_stock';
     public const PAYMENT_VOUCHER = 'payment_voucher';
     public const RECEIPT_VOUCHER = 'receipt_voucher';
+    public const TREASURY = 'treasury';
 
     private const PREFIXES = [
         self::PURCHASE_INVOICE => 'PUR',
@@ -24,6 +25,7 @@ class DocumentNumberService
         self::OPENING_STOCK => 'OPN',
         self::PAYMENT_VOUCHER => 'PAY',
         self::RECEIPT_VOUCHER => 'REC',
+        self::TREASURY => 'TRE',
     ];
 
     public function generate(string $documentType, ?Carbon $date = null): string

@@ -18,7 +18,7 @@ class WarehouseResource extends Resource
 {
     protected static ?string $model = Warehouse::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
 
     protected static ?string $navigationLabel = 'المخازن';
 
@@ -26,7 +26,7 @@ class WarehouseResource extends Resource
 
     protected static ?string $pluralModelLabel = 'المخازن';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'الإعدادات';
+    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
 
     protected static ?string $recordTitleAttribute = 'name';
 
