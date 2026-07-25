@@ -104,7 +104,7 @@ class SalesInvoiceForm
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 6,
-                                'xl' => 5,
+                                'xl' => 4,
                             ]),
 
                         TextInput::make('quantity')
@@ -117,7 +117,7 @@ class SalesInvoiceForm
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 3,
-                                'xl' => 2,
+                                'xl' => 3,
                             ]),
 
                         Placeholder::make('warehouse_stock_balance')
@@ -146,7 +146,7 @@ class SalesInvoiceForm
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 3,
-                                'xl' => 2,
+                                'xl' => 3,
                             ]),
 
                         Placeholder::make('line_total_display')
@@ -158,7 +158,7 @@ class SalesInvoiceForm
                             ->columnSpan([
                                 'default' => 1,
                                 'md' => 3,
-                                'xl' => 2,
+                                'xl' => 1,
                             ]),
                     ]),
                 ])
