@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
 use App\Models\Item;
+use App\Models\SalesInvoice;
+use App\Services\Inventory\InventoryService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -65,7 +67,8 @@ class SalesInvoiceForm
                     )
                     ->searchable()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->live(),
             ]),
 
             Textarea::make('notes')
@@ -75,7 +78,7 @@ class SalesInvoiceForm
             Repeater::make('items')
                 ->label('أصناف الفاتورة')
                 ->schema([
-                    Grid::make(4)->schema([
+                    Grid::make(5)->schema([
                         Select::make('item_id')
                             ->label('الصنف')
                             ->options(fn (): array => Item::query()
@@ -102,6 +105,17 @@ class SalesInvoiceForm
                             ->default(1)
                             ->required()
                             ->live(),
+
+                        Placeholder::make('warehouse_stock_balance')
+                            ->label('الرصيد بالمخزن')
+                            ->content(fn (Get $get, ?SalesInvoice $record): string => number_format(
+                                app(InventoryService::class)->availableForSalesInvoice(
+                                    (int) $get('../../warehouse_id'),
+                                    (int) $get('item_id'),
+                                    $record?->getKey(),
+                                ),
+                                2,
+                            )),
 
                         TextInput::make('unit_price')
                             ->label('سعر البيع')

@@ -26,6 +26,7 @@ class SalesInvoiceService
         return DB::transaction(function () use ($data): SalesInvoice {
             $this->validateElectronicInvoiceNumber($data);
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->validateAvailableStock((int) ($data['warehouse_id'] ?? 0), $items);
             unset($data['items'], $data['document_number']);
 
             $invoice = SalesInvoice::create($data);
@@ -44,6 +45,11 @@ class SalesInvoiceService
             $this->validateElectronicInvoiceNumber($data);
             $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->getKey());
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->validateAvailableStock(
+                (int) ($data['warehouse_id'] ?? 0),
+                $items,
+                (int) $invoice->getKey(),
+            );
             unset($data['items'], $data['document_number']);
 
             $invoice->update($data);
@@ -160,6 +166,29 @@ class SalesInvoiceService
         }
 
         return array_values($normalized);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    private function validateAvailableStock(
+        int $warehouseId,
+        array $items,
+        ?int $salesInvoiceId = null,
+    ): void {
+        foreach ($items as $item) {
+            $availableQuantity = $this->inventoryService->availableForSalesInvoice(
+                $warehouseId,
+                (int) $item['item_id'],
+                $salesInvoiceId,
+            );
+
+            if ((float) $item['quantity'] > $availableQuantity) {
+                throw ValidationException::withMessages([
+                    'items' => 'الكمية المطلوبة غير متوفرة في المخزن.',
+                ]);
+            }
+        }
     }
 
     /**

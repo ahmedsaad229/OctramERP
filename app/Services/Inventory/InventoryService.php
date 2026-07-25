@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory;
 
+use App\Models\SalesInvoice;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use Illuminate\Database\Eloquent\Collection;
@@ -11,6 +12,43 @@ use InvalidArgumentException;
 
 class InventoryService
 {
+    public function availableForSalesInvoice(
+        int $warehouseId,
+        int $itemId,
+        ?int $salesInvoiceId = null,
+    ): float {
+        if ($warehouseId <= 0 || $itemId <= 0) {
+            return 0.0;
+        }
+
+        $availableQuantity = (float) (StockBalance::query()
+            ->where('warehouse_id', $warehouseId)
+            ->where('item_id', $itemId)
+            ->value('quantity') ?? 0);
+
+        if (! $salesInvoiceId) {
+            return $availableQuantity;
+        }
+
+        $invoice = SalesInvoice::query()
+            ->whereKey($salesInvoiceId)
+            ->where('warehouse_id', $warehouseId)
+            ->first(['id', 'document_number']);
+
+        if (! $invoice) {
+            return $availableQuantity;
+        }
+
+        $previouslyIssuedQuantity = (float) StockTransaction::query()
+            ->where('reference_no', $invoice->document_number)
+            ->where('warehouse_id', $warehouseId)
+            ->where('item_id', $itemId)
+            ->where('transaction_type', StockTransaction::TYPE_SALE)
+            ->sum('quantity');
+
+        return $availableQuantity + $previouslyIssuedQuantity;
+    }
+
     public function deleteDocumentTransactions(string $referenceNo): void
     {
         if (blank($referenceNo)) {
