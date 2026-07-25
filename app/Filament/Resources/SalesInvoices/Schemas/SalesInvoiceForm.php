@@ -78,7 +78,11 @@ class SalesInvoiceForm
             Repeater::make('items')
                 ->label('أصناف الفاتورة')
                 ->schema([
-                    Grid::make(5)->schema([
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 6,
+                        'xl' => 13,
+                    ])->schema([
                         Select::make('item_id')
                             ->label('الصنف')
                             ->options(fn (): array => Item::query()
@@ -96,7 +100,12 @@ class SalesInvoiceForm
                                     'unit_price',
                                     Item::query()->whereKey($state)->value('sale_price') ?? 0,
                                 );
-                            }),
+                            })
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 6,
+                                'xl' => 5,
+                            ]),
 
                         TextInput::make('quantity')
                             ->label('الكمية')
@@ -104,7 +113,12 @@ class SalesInvoiceForm
                             ->minValue(0.01)
                             ->default(1)
                             ->required()
-                            ->live(),
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 3,
+                                'xl' => 2,
+                            ]),
 
                         Placeholder::make('warehouse_stock_balance')
                             ->label('الرصيد بالمخزن')
@@ -115,7 +129,12 @@ class SalesInvoiceForm
                                     $record?->getKey(),
                                 ),
                                 2,
-                            )),
+                            ))
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 3,
+                                'xl' => 2,
+                            ]),
 
                         TextInput::make('unit_price')
                             ->label('سعر البيع')
@@ -123,14 +142,24 @@ class SalesInvoiceForm
                             ->minValue(0)
                             ->default(0)
                             ->required()
-                            ->live(),
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 3,
+                                'xl' => 2,
+                            ]),
 
                         Placeholder::make('line_total_display')
                             ->label('الإجمالي')
                             ->content(fn (Get $get): string => number_format(
                                 (float) $get('quantity') * (float) $get('unit_price'),
                                 2,
-                            )),
+                            ))
+                            ->columnSpan([
+                                'default' => 1,
+                                'md' => 3,
+                                'xl' => 2,
+                            ]),
                     ]),
                 ])
                 ->defaultItems(1)
