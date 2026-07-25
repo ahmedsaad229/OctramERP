@@ -56,7 +56,10 @@ class ReceiptVoucherForm
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(fn (Set $set) => $set('allocations', [[]])),
+                    ->afterStateUpdated(fn (Set $set) => $set('allocations', [[
+                        'sales_invoice_id' => null,
+                        'amount' => null,
+                    ]])),
             ]),
 
             Repeater::make('allocations')
@@ -68,61 +71,56 @@ class ReceiptVoucherForm
                             ->options(fn (Get $get, ?ReceiptVoucher $record): array => self::invoiceOptions(
                                 (int) $get('../../customer_id'),
                                 $record?->getKey(),
-                                collect($get('../../allocations') ?? [])
-                                    ->pluck('sales_invoice_id')
-                                    ->filter()
-                                    ->map(fn ($invoiceId): int => (int) $invoiceId)
-                                    ->reject(fn (int $invoiceId): bool => $invoiceId === (int) $get('sales_invoice_id'))
-                                    ->all(),
                             ))
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                            ->native(false)
                             ->live()
-                            ->afterStateUpdated(function (
-                                Set $set,
-                                mixed $state,
-                                ?ReceiptVoucher $record,
-                            ): void {
-                                self::setInvoiceSummary($set, $state, $record?->getKey());
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                $set('sales_invoice_id', filled($state) ? (int) $state : null);
+                                $set('amount', null);
                             }),
 
-                        Placeholder::make('invoice_code')
+                        Placeholder::make('invoice_code_display')
                             ->label('كود الفاتورة')
-                            ->content(fn (Get $get): string => self::invoice($get('sales_invoice_id'))
-                                ?->document_number ?? '—'),
-
-                        Placeholder::make('invoice_date')
-                            ->label('تاريخ الفاتورة')
-                            ->content(fn (Get $get): string => self::invoice($get('sales_invoice_id'))
-                                ?->invoice_date?->format('Y-m-d') ?? '—'),
-
-                        TextInput::make('invoice_total')
-                            ->label('إجمالي الفاتورة')
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->default('0.00'),
-
-                        TextInput::make('previously_paid')
-                            ->label('المحصل سابقاً')
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->default('0.00'),
-
-                        TextInput::make('remaining_before_receipt')
-                            ->label('المتبقي قبل هذا السند')
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->default('0.00')
-                            ->afterStateHydrated(fn (
-                                Set $set,
-                                Get $get,
-                                ?ReceiptVoucher $record,
-                            ) => self::setInvoiceSummary(
-                                $set,
-                                $get('sales_invoice_id'),
+                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::invoiceSummary(
+                                self::selectedInvoiceId($get),
                                 $record?->getKey(),
+                            )['invoice_code'] ?? '—'),
+
+                        Placeholder::make('invoice_date_display')
+                            ->label('تاريخ الفاتورة')
+                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::invoiceSummary(
+                                self::selectedInvoiceId($get),
+                                $record?->getKey(),
+                            )['invoice_date'] ?? '—'),
+
+                        Placeholder::make('invoice_total_display')
+                            ->label('إجمالي الفاتورة')
+                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::formatAmount(
+                                self::invoiceSummary(
+                                    self::selectedInvoiceId($get),
+                                    $record?->getKey(),
+                                )['invoice_total'],
+                            )),
+
+                        Placeholder::make('previously_paid_display')
+                            ->label('المحصل سابقاً')
+                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::formatAmount(
+                                self::invoiceSummary(
+                                    self::selectedInvoiceId($get),
+                                    $record?->getKey(),
+                                )['previously_paid'],
+                            )),
+
+                        Placeholder::make('remaining_before_receipt_display')
+                            ->label('المتبقي قبل هذا السند')
+                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::formatAmount(
+                                self::invoiceSummary(
+                                    self::selectedInvoiceId($get),
+                                    $record?->getKey(),
+                                )['remaining_before_receipt'],
                             )),
 
                         TextInput::make('amount')
@@ -156,13 +154,11 @@ class ReceiptVoucherForm
     }
 
     /**
-     * @param  array<int, int>  $excludedInvoiceIds
      * @return array<int, string>
      */
     private static function invoiceOptions(
         int $customerId,
         ?int $excludingReceiptVoucherId,
-        array $excludedInvoiceIds = [],
     ): array
     {
         if ($customerId <= 0) {
@@ -173,10 +169,6 @@ class ReceiptVoucherForm
             ->where('customer_id', $customerId)
             ->whereNotNull('electronic_invoice_number')
             ->where('electronic_invoice_number', '>', 0)
-            ->when(
-                $excludedInvoiceIds !== [],
-                fn ($query) => $query->whereKeyNot($excludedInvoiceIds),
-            )
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->get()
@@ -184,7 +176,7 @@ class ReceiptVoucherForm
                 $excludingReceiptVoucherId,
             ) > 0)
             ->mapWithKeys(fn (SalesInvoice $invoice): array => [
-                $invoice->getKey() => $invoice->electronic_invoice_number
+                (int) $invoice->getKey() => $invoice->electronic_invoice_number
                     . ' — '
                     . $invoice->document_number
                     . ' — المتبقي: '
@@ -198,20 +190,35 @@ class ReceiptVoucherForm
         return $invoiceId ? SalesInvoice::query()->find($invoiceId) : null;
     }
 
-    private static function setInvoiceSummary(
-        Set $set,
-        mixed $invoiceId,
+    /**
+     * @return array{
+     *     invoice_code: ?string,
+     *     invoice_date: ?string,
+     *     invoice_total: float,
+     *     previously_paid: float,
+     *     remaining_before_receipt: float
+     * }
+     */
+    public static function invoiceSummary(
+        ?int $invoiceId,
         ?int $excludingReceiptVoucherId,
-    ): void {
+    ): array {
         $invoice = self::invoice($invoiceId);
 
-        $set('invoice_total', self::formatAmount($invoice?->totalAmount()));
-        $set('previously_paid', self::formatAmount(
-            $invoice?->paidAmount($excludingReceiptVoucherId),
-        ));
-        $set('remaining_before_receipt', self::formatAmount(
-            $invoice?->remainingAmount($excludingReceiptVoucherId),
-        ));
+        return [
+            'invoice_code' => $invoice?->document_number,
+            'invoice_date' => $invoice?->invoice_date?->format('Y-m-d'),
+            'invoice_total' => $invoice?->totalAmount() ?? 0,
+            'previously_paid' => $invoice?->paidAmount($excludingReceiptVoucherId) ?? 0,
+            'remaining_before_receipt' => $invoice?->remainingAmount($excludingReceiptVoucherId) ?? 0,
+        ];
+    }
+
+    private static function selectedInvoiceId(Get $get): ?int
+    {
+        $invoiceId = $get('sales_invoice_id');
+
+        return filled($invoiceId) ? (int) $invoiceId : null;
     }
 
     private static function formatAmount(mixed $amount): string
