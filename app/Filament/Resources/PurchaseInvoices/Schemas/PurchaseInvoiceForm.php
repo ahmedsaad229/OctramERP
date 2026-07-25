@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseInvoices\Schemas;
 
+use App\Enums\PaymentType;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class PurchaseInvoiceForm
@@ -42,6 +44,24 @@ class PurchaseInvoiceForm
                             ->label('رقم الفاتورة')
                             ->required()
                             ->maxLength(255),
+
+                        Select::make('payment_type')
+                            ->label('نوع التعامل')
+                            ->options(PaymentType::options())
+                            ->default(PaymentType::Cash->value)
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                if ($state === PaymentType::Cash->value) {
+                                    $set('due_date', null);
+                                }
+                            }),
+
+                        DatePicker::make('due_date')
+                            ->label('تاريخ الاستحقاق')
+                            ->visible(fn (Get $get): bool => $get('payment_type') === PaymentType::Credit->value)
+                            ->required(fn (Get $get): bool => $get('payment_type') === PaymentType::Credit->value)
+                            ->minDate(fn (Get $get): mixed => $get('invoice_date')),
 
                         Select::make('supplier_id')
                             ->label('المورد')

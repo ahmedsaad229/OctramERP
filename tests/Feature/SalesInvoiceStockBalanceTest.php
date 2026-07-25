@@ -96,6 +96,7 @@ class SalesInvoiceStockBalanceTest extends TestCase
 
         $invoice = app(SalesInvoiceService::class)->create([
             'electronic_invoice_number' => 500,
+            'payment_type' => 'cash',
             'invoice_date' => '2026-07-25',
             'customer_id' => $customer->getKey(),
             'warehouse_id' => $warehouse->getKey(),
@@ -133,6 +134,7 @@ class SalesInvoiceStockBalanceTest extends TestCase
 
         $invoice = $service->create([
             'electronic_invoice_number' => 600,
+            'payment_type' => 'cash',
             'invoice_date' => '2026-07-25',
             'customer_id' => $customer->getKey(),
             'warehouse_id' => $warehouse->getKey(),
@@ -149,6 +151,7 @@ class SalesInvoiceStockBalanceTest extends TestCase
         try {
             $service->update($invoice, [
                 'electronic_invoice_number' => 600,
+                'payment_type' => 'cash',
                 'invoice_date' => '2026-07-25',
                 'customer_id' => $customer->getKey(),
                 'warehouse_id' => $warehouse->getKey(),
@@ -172,6 +175,7 @@ class SalesInvoiceStockBalanceTest extends TestCase
 
         $invoice = $service->update($invoice, [
             'electronic_invoice_number' => 600,
+            'payment_type' => 'cash',
             'invoice_date' => '2026-07-25',
             'customer_id' => $customer->getKey(),
             'warehouse_id' => $warehouse->getKey(),
@@ -339,6 +343,8 @@ class SalesInvoiceStockBalanceTest extends TestCase
             $table->date('invoice_date');
             $table->unsignedBigInteger('customer_id');
             $table->unsignedBigInteger('warehouse_id');
+            $table->string('payment_type')->default('cash');
+            $table->date('due_date')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

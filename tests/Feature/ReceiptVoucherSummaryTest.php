@@ -49,6 +49,7 @@ class ReceiptVoucherSummaryTest extends TestCase
         $invoice = SalesInvoice::create([
             'document_number' => 'SAL-TEST-0001',
             'electronic_invoice_number' => 500,
+            'payment_type' => 'cash',
             'invoice_date' => '2026-07-25',
             'customer_id' => $customer->getKey(),
             'warehouse_id' => $warehouse->getKey(),
@@ -339,6 +340,8 @@ class ReceiptVoucherSummaryTest extends TestCase
             $table->date('invoice_date');
             $table->unsignedBigInteger('customer_id');
             $table->unsignedBigInteger('warehouse_id');
+            $table->string('payment_type')->default('cash');
+            $table->date('due_date')->nullable();
             $table->timestamps();
         });
         Schema::create('sales_invoice_items', function (Blueprint $table): void {

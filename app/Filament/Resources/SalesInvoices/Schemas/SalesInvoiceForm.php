@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
+use App\Enums\PaymentType;
 use App\Models\Item;
 use App\Models\SalesInvoice;
 use App\Services\Inventory\InventoryService;
@@ -55,6 +56,25 @@ class SalesInvoiceForm
                                 'integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
                                 'min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
                             ]),
+
+                        Select::make('payment_type')
+                            ->label('نوع التعامل')
+                            ->options(PaymentType::options())
+                            ->default(PaymentType::Cash->value)
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                if ($state === PaymentType::Cash->value) {
+                                    $set('due_date', null);
+                                }
+                            }),
+
+                        DatePicker::make('due_date')
+                            ->label('تاريخ الاستحقاق')
+                            ->visible(fn (Get $get): bool => $get('payment_type') === PaymentType::Credit->value)
+                            ->required(fn (Get $get): bool => $get('payment_type') === PaymentType::Credit->value)
+                            ->minDate(fn (Get $get): mixed => $get('invoice_date'))
+                            ->native(false),
 
                         Select::make('customer_id')
                             ->label('العميل')

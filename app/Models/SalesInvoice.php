@@ -2,24 +2,32 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentType;
+use App\Models\Concerns\HasInformationalPaymentTerms;
 use App\Services\DocumentNumberService;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesInvoice extends BaseModel
 {
+    use HasInformationalPaymentTerms;
+
     protected $fillable = [
         'document_number',
         'electronic_invoice_number',
         'invoice_date',
         'customer_id',
         'warehouse_id',
+        'payment_type',
+        'due_date',
         'notes',
     ];
 
     protected $casts = [
         'electronic_invoice_number' => 'integer',
         'invoice_date' => 'date',
+        'payment_type' => PaymentType::class,
+        'due_date' => 'date',
     ];
 
     protected static function booted(): void
