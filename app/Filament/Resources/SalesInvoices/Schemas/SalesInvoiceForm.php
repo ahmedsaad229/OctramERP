@@ -38,6 +38,12 @@ class SalesInvoiceForm
                             ->disabled()
                             ->dehydrated(false),
 
+                        DatePicker::make('invoice_date')
+                            ->label('تاريخ الفاتورة')
+                            ->default(now())
+                            ->native(false)
+                            ->required(),
+
                         TextInput::make('electronic_invoice_number')
                             ->label('رقم الفاتورة الإلكترونية')
                             ->required()
@@ -49,12 +55,6 @@ class SalesInvoiceForm
                                 'integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
                                 'min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
                             ]),
-
-                        DatePicker::make('invoice_date')
-                            ->label('تاريخ الفاتورة')
-                            ->default(now())
-                            ->native(false)
-                            ->required(),
 
                         Select::make('customer_id')
                             ->label('العميل')
@@ -79,14 +79,6 @@ class SalesInvoiceForm
                             ->required()
                             ->live(),
 
-                        Textarea::make('notes')
-                            ->label('ملاحظات')
-                            ->rows(3)
-                            ->columnSpan([
-                                'default' => 1,
-                                'md' => 2,
-                                'xl' => 3,
-                            ]),
                     ])->columnSpanFull(),
                 ])
                 ->columns(1)
@@ -199,6 +191,11 @@ class SalesInvoiceForm
                         ->columnSpanFull(),
                 ])
                 ->columns(1)
+                ->columnSpanFull(),
+
+            Textarea::make('notes')
+                ->label('ملاحظات')
+                ->rows(3)
                 ->columnSpanFull(),
         ]);
     }
