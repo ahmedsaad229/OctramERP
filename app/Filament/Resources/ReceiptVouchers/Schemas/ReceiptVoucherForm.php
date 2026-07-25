@@ -79,7 +79,14 @@ class ReceiptVoucherForm
                             ->preload()
                             ->required()
                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                            ->live(),
+                            ->live()
+                            ->afterStateUpdated(function (
+                                Set $set,
+                                mixed $state,
+                                ?ReceiptVoucher $record,
+                            ): void {
+                                self::setInvoiceSummary($set, $state, $record?->getKey());
+                            }),
 
                         Placeholder::make('invoice_code')
                             ->label('كود الفاتورة')
@@ -91,24 +98,31 @@ class ReceiptVoucherForm
                             ->content(fn (Get $get): string => self::invoice($get('sales_invoice_id'))
                                 ?->invoice_date?->format('Y-m-d') ?? '—'),
 
-                        Placeholder::make('invoice_total')
+                        TextInput::make('invoice_total')
                             ->label('إجمالي الفاتورة')
-                            ->content(fn (Get $get): string => self::formatAmount(
-                                self::invoice($get('sales_invoice_id'))?->totalAmount(),
-                            )),
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->default('0.00'),
 
-                        Placeholder::make('previously_paid')
+                        TextInput::make('previously_paid')
                             ->label('المحصل سابقاً')
-                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::formatAmount(
-                                self::invoice($get('sales_invoice_id'))
-                                    ?->paidAmount($record?->getKey()),
-                            )),
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->default('0.00'),
 
-                        Placeholder::make('remaining_before_receipt')
+                        TextInput::make('remaining_before_receipt')
                             ->label('المتبقي قبل هذا السند')
-                            ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::formatAmount(
-                                self::invoice($get('sales_invoice_id'))
-                                    ?->remainingAmount($record?->getKey()),
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->default('0.00')
+                            ->afterStateHydrated(fn (
+                                Set $set,
+                                Get $get,
+                                ?ReceiptVoucher $record,
+                            ) => self::setInvoiceSummary(
+                                $set,
+                                $get('sales_invoice_id'),
+                                $record?->getKey(),
                             )),
 
                         TextInput::make('amount')
@@ -182,6 +196,22 @@ class ReceiptVoucherForm
     private static function invoice(mixed $invoiceId): ?SalesInvoice
     {
         return $invoiceId ? SalesInvoice::query()->find($invoiceId) : null;
+    }
+
+    private static function setInvoiceSummary(
+        Set $set,
+        mixed $invoiceId,
+        ?int $excludingReceiptVoucherId,
+    ): void {
+        $invoice = self::invoice($invoiceId);
+
+        $set('invoice_total', self::formatAmount($invoice?->totalAmount()));
+        $set('previously_paid', self::formatAmount(
+            $invoice?->paidAmount($excludingReceiptVoucherId),
+        ));
+        $set('remaining_before_receipt', self::formatAmount(
+            $invoice?->remainingAmount($excludingReceiptVoucherId),
+        ));
     }
 
     private static function formatAmount(mixed $amount): string
