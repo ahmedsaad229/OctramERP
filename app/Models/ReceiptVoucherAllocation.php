@@ -9,12 +9,10 @@ class ReceiptVoucherAllocation extends BaseModel
     protected $fillable = [
         'receipt_voucher_id',
         'sales_invoice_id',
-        'electronic_invoice_number',
         'amount',
     ];
 
     protected $casts = [
-        'electronic_invoice_number' => 'integer',
         'amount' => 'decimal:2',
     ];
 

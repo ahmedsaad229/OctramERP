@@ -8,6 +8,7 @@ use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Services\PartyTransactionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class SalesInvoiceService
@@ -23,6 +24,7 @@ class SalesInvoiceService
     public function create(array $data): SalesInvoice
     {
         return DB::transaction(function () use ($data): SalesInvoice {
+            $this->validateElectronicInvoiceNumber($data);
             $items = $this->normalizeItems($data['items'] ?? []);
             unset($data['items'], $data['document_number']);
 
@@ -39,6 +41,7 @@ class SalesInvoiceService
     public function update(SalesInvoice $invoice, array $data): SalesInvoice
     {
         return DB::transaction(function () use ($invoice, $data): SalesInvoice {
+            $this->validateElectronicInvoiceNumber($data);
             $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->getKey());
             $items = $this->normalizeItems($data['items'] ?? []);
             unset($data['items'], $data['document_number']);
@@ -157,5 +160,21 @@ class SalesInvoiceService
         }
 
         return array_values($normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function validateElectronicInvoiceNumber(array $data): void
+    {
+        Validator::make(
+            $data,
+            ['electronic_invoice_number' => ['required', 'integer', 'min:1']],
+            [
+                'electronic_invoice_number.required' => 'رقم الفاتورة الإلكترونية مطلوب.',
+                'electronic_invoice_number.integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
+                'electronic_invoice_number.min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
+            ],
+        )->validate();
     }
 }

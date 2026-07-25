@@ -8,7 +8,6 @@ use App\Models\SalesInvoice;
 use App\Models\Treasury;
 use App\Models\TreasuryTransaction;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ReceiptVoucherService
@@ -142,33 +141,10 @@ class ReceiptVoucherService
         foreach ($allocations as $index => $allocation) {
             $invoiceId = (int) ($allocation['sales_invoice_id'] ?? 0);
             $amount = (float) ($allocation['amount'] ?? 0);
-            $electronicInvoiceNumberValidator = Validator::make(
-                [
-                    'electronic_invoice_number' => $allocation['electronic_invoice_number'] ?? null,
-                ],
-                [
-                    'electronic_invoice_number' => ['required', 'integer', 'min:1'],
-                ],
-                [
-                    'electronic_invoice_number.required' => 'رقم الفاتورة الإلكترونية مطلوب.',
-                    'electronic_invoice_number.integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
-                    'electronic_invoice_number.min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
-                ],
-            );
-
-            if ($electronicInvoiceNumberValidator->fails()) {
-                throw ValidationException::withMessages([
-                    "data.allocations.{$index}.electronic_invoice_number" => $electronicInvoiceNumberValidator
-                        ->errors()
-                        ->first('electronic_invoice_number'),
-                ]);
-            }
-
-            $electronicInvoiceNumber = (int) $allocation['electronic_invoice_number'];
 
             if ($invoiceId <= 0) {
                 throw ValidationException::withMessages([
-                    "data.allocations.{$index}.sales_invoice_id" => 'يجب اختيار فاتورة بيع.',
+                    "data.allocations.{$index}.sales_invoice_id" => 'يجب اختيار رقم الفاتورة الإلكترونية.',
                 ]);
             }
 
@@ -187,7 +163,6 @@ class ReceiptVoucherService
             $invoiceIds[$invoiceId] = true;
             $validatedAllocations[] = [
                 'sales_invoice_id' => $invoiceId,
-                'electronic_invoice_number' => $electronicInvoiceNumber,
                 'amount' => $amount,
                 'index' => $index,
             ];
@@ -216,6 +191,12 @@ class ReceiptVoucherService
                 ]);
             }
 
+            if (! is_int($invoice->electronic_invoice_number) || $invoice->electronic_invoice_number < 1) {
+                throw ValidationException::withMessages([
+                    "data.allocations.{$index}.sales_invoice_id" => 'فاتورة البيع لا تحتوي على رقم فاتورة إلكترونية صالح.',
+                ]);
+            }
+
             $invoiceTotal = (float) $invoice->items()->sum('line_total');
             $previouslyPaid = (float) $invoice->receiptAllocations()->sum('amount');
             $remainingAmount = max(0, $invoiceTotal - $previouslyPaid);
@@ -231,7 +212,6 @@ class ReceiptVoucherService
             array_map(
                 fn (array $allocation): array => [
                     'sales_invoice_id' => $allocation['sales_invoice_id'],
-                    'electronic_invoice_number' => $allocation['electronic_invoice_number'],
                     'amount' => round($allocation['amount'], 2),
                 ],
                 $validatedAllocations,

@@ -17,6 +17,10 @@ class SalesInvoicesTable
                     ->label('رقم المستند')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('electronic_invoice_number')
+                    ->label('رقم الفاتورة الإلكترونية')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('invoice_date')
                     ->label('تاريخ الفاتورة')
                     ->date()

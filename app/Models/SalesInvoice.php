@@ -10,6 +10,7 @@ class SalesInvoice extends BaseModel
 {
     protected $fillable = [
         'document_number',
+        'electronic_invoice_number',
         'invoice_date',
         'customer_id',
         'warehouse_id',
@@ -17,6 +18,7 @@ class SalesInvoice extends BaseModel
     ];
 
     protected $casts = [
+        'electronic_invoice_number' => 'integer',
         'invoice_date' => 'date',
     ];
 

@@ -18,10 +18,9 @@ class EditReceiptVoucher extends EditRecord
     {
         $data['allocations'] = $this->getRecord()
             ->allocations()
-            ->get(['sales_invoice_id', 'electronic_invoice_number', 'amount'])
+            ->get(['sales_invoice_id', 'amount'])
             ->map(fn ($allocation): array => [
                 'sales_invoice_id' => $allocation->sales_invoice_id,
-                'electronic_invoice_number' => $allocation->electronic_invoice_number,
                 'amount' => $allocation->amount,
             ])
             ->all();

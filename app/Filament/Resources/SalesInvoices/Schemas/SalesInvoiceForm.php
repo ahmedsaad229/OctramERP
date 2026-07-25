@@ -27,6 +27,18 @@ class SalesInvoiceForm
                     ->disabled()
                     ->dehydrated(false),
 
+                TextInput::make('electronic_invoice_number')
+                    ->label('رقم الفاتورة الإلكترونية')
+                    ->required()
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->validationMessages([
+                        'required' => 'رقم الفاتورة الإلكترونية مطلوب.',
+                        'integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
+                        'min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
+                    ]),
+
                 DatePicker::make('invoice_date')
                     ->label('تاريخ الفاتورة')
                     ->default(now())

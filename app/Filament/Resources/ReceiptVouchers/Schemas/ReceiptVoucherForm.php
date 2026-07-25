@@ -56,7 +56,7 @@ class ReceiptVoucherForm
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(fn (Set $set) => $set('allocations', [])),
+                    ->afterStateUpdated(fn (Set $set) => $set('allocations', [[]])),
             ]),
 
             Repeater::make('allocations')
@@ -64,10 +64,16 @@ class ReceiptVoucherForm
                 ->schema([
                     Grid::make(3)->schema([
                         Select::make('sales_invoice_id')
-                            ->label('فاتورة البيع')
+                            ->label('رقم الفاتورة الإلكترونية')
                             ->options(fn (Get $get, ?ReceiptVoucher $record): array => self::invoiceOptions(
                                 (int) $get('../../customer_id'),
                                 $record?->getKey(),
+                                collect($get('../../allocations') ?? [])
+                                    ->pluck('sales_invoice_id')
+                                    ->filter()
+                                    ->map(fn ($invoiceId): int => (int) $invoiceId)
+                                    ->reject(fn (int $invoiceId): bool => $invoiceId === (int) $get('sales_invoice_id'))
+                                    ->all(),
                             ))
                             ->searchable()
                             ->preload()
@@ -75,17 +81,10 @@ class ReceiptVoucherForm
                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->live(),
 
-                        TextInput::make('electronic_invoice_number')
-                            ->label('رقم الفاتورة الإلكترونية')
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1)
-                            ->validationMessages([
-                                'required' => 'رقم الفاتورة الإلكترونية مطلوب.',
-                                'integer' => 'رقم الفاتورة الإلكترونية يجب أن يكون رقماً صحيحاً.',
-                                'min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
-                            ]),
+                        Placeholder::make('invoice_code')
+                            ->label('كود الفاتورة')
+                            ->content(fn (Get $get): string => self::invoice($get('sales_invoice_id'))
+                                ?->document_number ?? '—'),
 
                         Placeholder::make('invoice_date')
                             ->label('تاريخ الفاتورة')
@@ -122,8 +121,10 @@ class ReceiptVoucherForm
                 ])
                 ->defaultItems(1)
                 ->minItems(1)
-                ->reorderable(false)
-                ->addActionLabel('إضافة فاتورة'),
+                ->maxItems(1)
+                ->addable(false)
+                ->deletable(false)
+                ->reorderable(false),
 
             Placeholder::make('allocation_total')
                 ->label('إجمالي المبلغ المحصل')
@@ -141,9 +142,14 @@ class ReceiptVoucherForm
     }
 
     /**
+     * @param  array<int, int>  $excludedInvoiceIds
      * @return array<int, string>
      */
-    private static function invoiceOptions(int $customerId, ?int $excludingReceiptVoucherId): array
+    private static function invoiceOptions(
+        int $customerId,
+        ?int $excludingReceiptVoucherId,
+        array $excludedInvoiceIds = [],
+    ): array
     {
         if ($customerId <= 0) {
             return [];
@@ -151,6 +157,12 @@ class ReceiptVoucherForm
 
         return SalesInvoice::query()
             ->where('customer_id', $customerId)
+            ->whereNotNull('electronic_invoice_number')
+            ->where('electronic_invoice_number', '>', 0)
+            ->when(
+                $excludedInvoiceIds !== [],
+                fn ($query) => $query->whereKeyNot($excludedInvoiceIds),
+            )
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->get()
@@ -158,7 +170,9 @@ class ReceiptVoucherForm
                 $excludingReceiptVoucherId,
             ) > 0)
             ->mapWithKeys(fn (SalesInvoice $invoice): array => [
-                $invoice->getKey() => $invoice->document_number
+                $invoice->getKey() => $invoice->electronic_invoice_number
+                    . ' — '
+                    . $invoice->document_number
                     . ' — المتبقي: '
                     . self::formatAmount($invoice->remainingAmount($excludingReceiptVoucherId)),
             ])
