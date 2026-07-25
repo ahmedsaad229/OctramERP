@@ -44,4 +44,41 @@ class SalesInvoice extends BaseModel
     {
         return $this->hasMany(SalesInvoiceItem::class);
     }
+
+    public function receiptAllocations(): HasMany
+    {
+        return $this->hasMany(ReceiptVoucherAllocation::class);
+    }
+
+    public function totalAmount(): float
+    {
+        return (float) $this->items()->sum('line_total');
+    }
+
+    public function paidAmount(?int $excludingReceiptVoucherId = null): float
+    {
+        return (float) $this->receiptAllocations()
+            ->when(
+                $excludingReceiptVoucherId,
+                fn ($query) => $query->where('receipt_voucher_id', '!=', $excludingReceiptVoucherId),
+            )
+            ->sum('amount');
+    }
+
+    public function remainingAmount(?int $excludingReceiptVoucherId = null): float
+    {
+        return max(0, $this->totalAmount() - $this->paidAmount($excludingReceiptVoucherId));
+    }
+
+    public function paymentStatus(): string
+    {
+        $paidAmount = $this->paidAmount();
+        $remainingAmount = max(0, $this->totalAmount() - $paidAmount);
+
+        if ($paidAmount <= 0) {
+            return 'unpaid';
+        }
+
+        return $remainingAmount > 0 ? 'partially_paid' : 'paid';
+    }
 }
