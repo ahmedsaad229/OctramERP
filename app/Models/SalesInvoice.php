@@ -54,7 +54,9 @@ class SalesInvoice extends BaseModel
 
     public function totalAmount(): float
     {
-        return (float) $this->items()->sum('line_total');
+        return (float) ($this->relationLoaded('items')
+            ? $this->items->sum('line_total')
+            : $this->items()->sum('line_total'));
     }
 
     public function paidAmount(?int $excludingReceiptVoucherId = null): float
@@ -70,6 +72,42 @@ class SalesInvoice extends BaseModel
     public function remainingAmount(?int $excludingReceiptVoucherId = null): float
     {
         return max(0, $this->totalAmount() - $this->paidAmount($excludingReceiptVoucherId));
+    }
+
+    public function previouslyPaidBeforeReceipt(ReceiptVoucher $receiptVoucher): float
+    {
+        if ($this->relationLoaded('receiptAllocations')) {
+            return (float) $this->receiptAllocations
+                ->filter(function (ReceiptVoucherAllocation $allocation) use ($receiptVoucher): bool {
+                    $allocatedReceipt = $allocation->receiptVoucher;
+
+                    if (! $allocatedReceipt || $allocatedReceipt->is($receiptVoucher)) {
+                        return false;
+                    }
+
+                    return $allocatedReceipt->date->lt($receiptVoucher->date)
+                        || (
+                            $allocatedReceipt->date->equalTo($receiptVoucher->date)
+                            && $allocatedReceipt->getKey() < $receiptVoucher->getKey()
+                        );
+                })
+                ->sum('amount');
+        }
+
+        return (float) $this->receiptAllocations()
+            ->whereHas('receiptVoucher', fn ($query) => $query
+                ->where('date', '<', $receiptVoucher->date)
+                ->orWhere(function ($query) use ($receiptVoucher): void {
+                    $query
+                        ->whereDate('date', $receiptVoucher->date)
+                        ->where('id', '<', $receiptVoucher->getKey());
+                }))
+            ->sum('amount');
+    }
+
+    public function remainingBeforeReceipt(ReceiptVoucher $receiptVoucher): float
+    {
+        return max(0, $this->totalAmount() - $this->previouslyPaidBeforeReceipt($receiptVoucher));
     }
 
     public function paymentStatus(): string

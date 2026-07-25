@@ -41,4 +41,34 @@ class ReceiptVoucher extends BaseModel
     {
         return $this->hasMany(ReceiptVoucherAllocation::class);
     }
+
+    public function relatedSalesInvoice(): ?SalesInvoice
+    {
+        return $this->allocations->first()?->salesInvoice;
+    }
+
+    /**
+     * @return array{previously_paid: float, remaining_after_receipt: float}
+     */
+    public function paymentSummaryBefore(): array
+    {
+        $invoice = $this->relatedSalesInvoice();
+
+        if (! $invoice) {
+            return [
+                'previously_paid' => 0.0,
+                'remaining_after_receipt' => 0.0,
+            ];
+        }
+
+        $previouslyPaid = $invoice->previouslyPaidBeforeReceipt($this);
+
+        return [
+            'previously_paid' => $previouslyPaid,
+            'remaining_after_receipt' => max(
+                0,
+                $invoice->totalAmount() - $previouslyPaid - (float) $this->amount,
+            ),
+        ];
+    }
 }

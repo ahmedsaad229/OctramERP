@@ -3,15 +3,18 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\ReceiptVouchers\Pages\CreateReceiptVoucher;
+use App\Filament\Resources\ReceiptVouchers\Pages\ListReceiptVouchers;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\ReceiptVoucher;
 use App\Models\SalesInvoice;
 use App\Models\Treasury;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -87,6 +90,164 @@ class ReceiptVoucherSummaryTest extends TestCase
             'sales_invoice_id' => $invoice->getKey(),
             'amount' => 250,
         ]);
+
+        $firstReceipt = ReceiptVoucher::query()->firstOrFail();
+        $this->assertSame(0.0, $invoice->previouslyPaidBeforeReceipt($firstReceipt));
+        $this->assertSame(1000.0, $invoice->remainingBeforeReceipt($firstReceipt));
+
+        $secondReceipt = $this->receipt(
+            'REC-TEST-0002',
+            '2026-07-26',
+            300,
+            $treasury,
+            $customer,
+            $invoice,
+        );
+        $thirdReceipt = $this->receipt(
+            'REC-TEST-0003',
+            '2026-07-27',
+            100,
+            $treasury,
+            $customer,
+            $invoice,
+        );
+
+        $this->assertSame(250.0, $invoice->previouslyPaidBeforeReceipt($secondReceipt));
+        $this->assertSame(750.0, $invoice->remainingBeforeReceipt($secondReceipt));
+        $this->assertSame(550.0, $invoice->previouslyPaidBeforeReceipt($thirdReceipt));
+        $this->assertSame(450.0, $invoice->remainingBeforeReceipt($thirdReceipt));
+
+        $secondReceipt->allocations()->update(['amount' => 350]);
+        $secondReceipt->update(['amount' => 350]);
+        $this->assertSame(250.0, $invoice->previouslyPaidBeforeReceipt($secondReceipt));
+        $this->assertSame(600.0, $invoice->previouslyPaidBeforeReceipt($thirdReceipt));
+
+        $sameDayReceipt = $this->receipt(
+            'REC-TEST-0004',
+            '2026-07-27',
+            50,
+            $treasury,
+            $customer,
+            $invoice,
+        );
+        $this->assertSame(700.0, $invoice->previouslyPaidBeforeReceipt($sameDayReceipt));
+        $sameDayReceipt->allocations()->update(['amount' => 75]);
+        $sameDayReceipt->update(['amount' => 75]);
+        $this->assertSame(700.0, $invoice->previouslyPaidBeforeReceipt($sameDayReceipt));
+
+        $missingAllocationReceipt = ReceiptVoucher::create([
+            'document_number' => 'REC-TEST-NO-ALLOCATION',
+            'treasury_id' => $treasury->getKey(),
+            'customer_id' => $customer->getKey(),
+            'date' => '2026-07-28',
+            'amount' => 0,
+            'created_by' => auth()->id(),
+        ]);
+
+        Livewire::test(ListReceiptVouchers::class)
+            ->assertSee('رقم الفاتورة الإلكترونية')
+            ->assertSee('كود الفاتورة')
+            ->assertSee('المسدد قبل هذا السند')
+            ->assertSee('الدفعة الحالية')
+            ->assertSee('المتبقي بعد هذا السند')
+            ->assertTableColumnStateSet(
+                'sales_invoice_electronic_number',
+                500,
+                $firstReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'sales_invoice_document_number',
+                'SAL-TEST-0001',
+                $firstReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'previously_paid_before_receipt',
+                600.0,
+                $thirdReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'remaining_after_receipt',
+                300.0,
+                $thirdReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'previously_paid_before_receipt',
+                0.0,
+                $firstReceipt,
+            )
+            ->assertTableColumnStateSet('amount', 250.0, $firstReceipt)
+            ->assertTableColumnStateSet(
+                'remaining_after_receipt',
+                750.0,
+                $firstReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'previously_paid_before_receipt',
+                250.0,
+                $secondReceipt,
+            )
+            ->assertTableColumnStateSet('amount', 350.0, $secondReceipt)
+            ->assertTableColumnStateSet(
+                'remaining_after_receipt',
+                400.0,
+                $secondReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'sales_invoice_electronic_number',
+                '—',
+                $missingAllocationReceipt,
+            )
+            ->assertTableColumnStateSet(
+                'sales_invoice_document_number',
+                '—',
+                $missingAllocationReceipt,
+            );
+
+        $records = ReceiptVoucher::query()
+            ->with([
+                'allocations.salesInvoice.items',
+                'allocations.salesInvoice.receiptAllocations.receiptVoucher',
+            ])
+            ->get();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $records->each(function (ReceiptVoucher $receipt): void {
+            $receipt->paymentSummaryBefore();
+        });
+
+        $this->assertCount(0, DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $firstReceipt->allocations()->delete();
+        $firstReceipt->delete();
+        $this->assertSame(0.0, $invoice->previouslyPaidBeforeReceipt($secondReceipt));
+        $this->assertSame(350.0, $invoice->previouslyPaidBeforeReceipt($thirdReceipt));
+        $this->assertSame(450.0, $invoice->previouslyPaidBeforeReceipt($sameDayReceipt));
+    }
+
+    private function receipt(
+        string $documentNumber,
+        string $date,
+        float $amount,
+        Treasury $treasury,
+        Customer $customer,
+        SalesInvoice $invoice,
+    ): ReceiptVoucher {
+        $receipt = ReceiptVoucher::create([
+            'document_number' => $documentNumber,
+            'treasury_id' => $treasury->getKey(),
+            'customer_id' => $customer->getKey(),
+            'date' => $date,
+            'amount' => $amount,
+            'created_by' => auth()->id(),
+        ]);
+        $receipt->allocations()->create([
+            'sales_invoice_id' => $invoice->getKey(),
+            'amount' => $amount,
+        ]);
+
+        return $receipt;
     }
 
     private function item(): Item
