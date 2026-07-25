@@ -6,10 +6,35 @@ use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class InventoryService
 {
+    public function deleteDocumentTransactions(string $referenceNo): void
+    {
+        if (blank($referenceNo)) {
+            throw new InvalidArgumentException('An inventory document reference is required.');
+        }
+
+        $balanceKeys = StockTransaction::query()
+            ->where('reference_no', $referenceNo)
+            ->get(['warehouse_id', 'item_id'])
+            ->map(fn (StockTransaction $transaction): string => $this->balanceKey(
+                $transaction->warehouse_id,
+                $transaction->item_id,
+            ))
+            ->unique()
+            ->values()
+            ->all();
+
+        StockTransaction::query()
+            ->where('reference_no', $referenceNo)
+            ->delete();
+
+        $this->recalculateBalances($balanceKeys);
+    }
+
     /**
      * Replace the ledger entries belonging to one inventory document and
      * rebuild the balances affected by that document.
@@ -147,7 +172,9 @@ class InventoryService
             [$availableQuantity] = $this->calculateBalance($warehouseId, $itemId);
 
             if ($requestedQuantity > $availableQuantity) {
-                throw new \RuntimeException('The issue quantity exceeds the available stock.');
+                throw ValidationException::withMessages([
+                    'items' => 'الكمية المطلوبة غير متوفرة في المخزن.',
+                ]);
             }
         }
     }

@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Filament\Resources\SalesInvoices\Pages;
+
+use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
+use App\Models\SalesInvoice;
+use App\Services\Inventory\SalesInvoiceService;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Exceptions\Halt;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
+
+class EditSalesInvoice extends EditRecord
+{
+    private const INSUFFICIENT_STOCK_MESSAGE = 'الكمية المطلوبة غير متوفرة في المخزن.';
+
+    protected static string $resource = SalesInvoiceResource::class;
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['items'] = $this->getRecord()
+            ->items()
+            ->get(['item_id', 'quantity', 'unit_price'])
+            ->map(fn ($item): array => [
+                'item_id' => $item->item_id,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+            ])
+            ->all();
+
+        return $data;
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        try {
+            return app(SalesInvoiceService::class)->update($record, $data);
+        } catch (ValidationException $exception) {
+            if (! collect($exception->errors())->flatten()->contains(self::INSUFFICIENT_STOCK_MESSAGE)) {
+                throw $exception;
+            }
+
+            Notification::make()
+                ->danger()
+                ->title(self::INSUFFICIENT_STOCK_MESSAGE)
+                ->persistent()
+                ->send();
+
+            foreach (array_keys($data['items'] ?? []) as $index) {
+                $this->addError(
+                    "data.items.{$index}.quantity",
+                    self::INSUFFICIENT_STOCK_MESSAGE,
+                );
+            }
+
+            throw (new Halt)->rollBackDatabaseTransaction();
+        }
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->label('حفظ التعديلات');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            DeleteAction::make()
+                ->using(fn (SalesInvoice $record): bool => app(SalesInvoiceService::class)->delete($record)),
+        ];
+    }
+
+}

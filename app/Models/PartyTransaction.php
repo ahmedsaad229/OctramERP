@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class PartyTransaction extends BaseModel
 {
     public const TYPE_PURCHASE_INVOICE = 'purchase_invoice';
+    public const TYPE_CUSTOMER_DEBIT = 'customer_debit';
 
     protected $fillable = [
         'party_type',

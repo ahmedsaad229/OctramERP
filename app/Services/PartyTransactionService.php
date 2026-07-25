@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\DB;
 
 class PartyTransactionService
 {
+    public function deleteDocumentTransaction(Model $source): void
+    {
+        PartyTransaction::query()
+            ->where('source_type', $source->getMorphClass())
+            ->where('source_id', $source->getKey())
+            ->delete();
+    }
+
     public function replaceDocumentTransaction(
         Model $party,
         string $transactionType,
@@ -28,10 +36,7 @@ class PartyTransactionService
             $referenceNo,
             $notes,
         ): PartyTransaction {
-            PartyTransaction::query()
-                ->where('source_type', $source->getMorphClass())
-                ->where('source_id', $source->getKey())
-                ->delete();
+            $this->deleteDocumentTransaction($source);
 
             return PartyTransaction::create([
                 'party_type' => $party->getMorphClass(),
