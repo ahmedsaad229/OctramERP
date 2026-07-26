@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\DueObligations\Pages\ListDueObligations;
+use App\Filament\Resources\DueObligations\Widgets\DueObligationStats;
 use App\Models\DueObligation;
 use App\Models\User;
+use App\Support\ArabicMoney;
 use App\Support\DueObligationSummary;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Carbon;
@@ -36,6 +38,9 @@ class DueObligationsTest extends TestCase
     {
         $this->assertSummaryTotals();
         $this->assertDueStatusFilters();
+        $this->assertTabs();
+        $this->assertTabsCombineWithFilters();
+        $this->assertArabicPresentation();
         $this->assertDefaultSorting();
         $this->assertViewOnlyActions();
     }
@@ -48,6 +53,15 @@ class DueObligationsTest extends TestCase
             'due_today' => 350.0,
             'overdue' => 300.0,
         ], DueObligationSummary::totals());
+
+        $this->assertSame('0.00 ج.م', ArabicMoney::format(0));
+        $this->assertSame('30,000.00 ج.م', ArabicMoney::format(30000));
+
+        Livewire::test(DueObligationStats::class)
+            ->assertSee('الفواتير الآجلة فقط')
+            ->assertSee('450.00 ج.م')
+            ->assertSee('700.00 ج.م')
+            ->assertDontSee('EGP');
     }
 
     private function assertDueStatusFilters(): void
@@ -64,6 +78,76 @@ class DueObligationsTest extends TestCase
             ->filterTable('due_status', DueObligation::STATUS_FUTURE)
             ->assertCanSeeTableRecords([$records['sale:3'], $records['purchase:3']])
             ->assertCanNotSeeTableRecords([$records['sale:1'], $records['sale:2'], $records['purchase:2']]);
+    }
+
+    private function assertTabs(): void
+    {
+        $records = $this->records();
+
+        Livewire::test(ListDueObligations::class)
+            ->assertSet('activeTab', 'all')
+            ->assertCanSeeTableRecords(array_values($records))
+            ->set('activeTab', 'customers')
+            ->assertCanSeeTableRecords([
+                $records['sale:1'],
+                $records['sale:2'],
+                $records['sale:3'],
+                $records['sale:4'],
+            ])
+            ->assertCanNotSeeTableRecords([
+                $records['purchase:1'],
+                $records['purchase:2'],
+                $records['purchase:3'],
+            ])
+            ->set('activeTab', 'suppliers')
+            ->assertCanSeeTableRecords([
+                $records['purchase:1'],
+                $records['purchase:2'],
+                $records['purchase:3'],
+            ])
+            ->assertCanNotSeeTableRecords([
+                $records['sale:1'],
+                $records['sale:2'],
+                $records['sale:3'],
+                $records['sale:4'],
+            ]);
+    }
+
+    private function assertTabsCombineWithFilters(): void
+    {
+        $records = $this->records();
+
+        Livewire::test(ListDueObligations::class)
+            ->set('activeTab', 'customers')
+            ->filterTable('due_status', DueObligation::STATUS_OVERDUE)
+            ->assertCanSeeTableRecords([$records['sale:1']])
+            ->assertCanNotSeeTableRecords([
+                $records['purchase:1'],
+                $records['sale:2'],
+                $records['sale:3'],
+                $records['sale:4'],
+            ])
+            ->assertSet('activeTab', 'customers');
+    }
+
+    private function assertArabicPresentation(): void
+    {
+        $records = $this->records();
+
+        Livewire::test(ListDueObligations::class)
+            ->assertTableColumnFormattedStateSet('total_amount', '100.00 ج.م', $records['sale:1'])
+            ->assertTableColumnFormattedStateSet('payment_type', 'كاش', $records['sale:4'])
+            ->assertTableColumnStateSet('due_date', null, $records['sale:4'])
+            ->assertTableColumnFormattedStateSet('days', '—', $records['sale:4'])
+            ->assertTableColumnFormattedStateSet('due_status', 'كاش', $records['sale:4'])
+            ->assertTableColumnFormattedStateSet('days', 'متبقي 15 يوم', $records['sale:3'])
+            ->assertTableColumnFormattedStateSet('days', 'متبقي يومان', $records['purchase:3'])
+            ->assertTableColumnFormattedStateSet('days', 'اليوم', $records['sale:2'])
+            ->assertTableColumnFormattedStateSet('days', 'متأخر 6 أيام', $records['sale:1'])
+            ->assertTableColumnFormattedStateSet('due_status', 'مستحق لاحقاً', $records['sale:3'])
+            ->assertTableColumnFormattedStateSet('due_status', 'مستحق اليوم', $records['sale:2'])
+            ->assertTableColumnFormattedStateSet('due_status', 'متأخر', $records['sale:1'])
+            ->assertDontSee('EGP');
     }
 
     private function assertDefaultSorting(): void

@@ -6,6 +6,7 @@ use App\Filament\Resources\DueObligations\DueObligationResource;
 use App\Filament\Resources\DueObligations\Widgets\DueObligationStats;
 use App\Models\DueObligation;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Model;
 
 class ListDueObligations extends ListRecords
@@ -17,6 +18,22 @@ class ListDueObligations extends ListRecords
         return [
             DueObligationStats::class,
         ];
+    }
+
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('الكل'),
+            'customers' => Tab::make('العملاء')
+                ->modifyQueryUsing(fn ($query) => $query->where('source_type', DueObligation::TYPE_SALE)),
+            'suppliers' => Tab::make('الموردون')
+                ->modifyQueryUsing(fn ($query) => $query->where('source_type', DueObligation::TYPE_PURCHASE)),
+        ];
+    }
+
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'all';
     }
 
     protected function resolveTableRecord(?string $key): Model|array|null

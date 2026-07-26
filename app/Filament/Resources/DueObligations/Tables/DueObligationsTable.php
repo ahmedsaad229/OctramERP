@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\DueObligation;
 use App\Models\Supplier;
 use App\Models\Warehouse;
+use App\Support\ArabicMoney;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
@@ -45,36 +46,54 @@ class DueObligationsTable
                     ->label('النوع')
                     ->formatStateUsing(fn (string $state): string => $state === DueObligation::TYPE_SALE ? 'بيع' : 'شراء')
                     ->badge()
-                    ->color(fn (string $state): string => $state === DueObligation::TYPE_SALE ? 'success' : 'info'),
+                    ->color(fn (string $state): string => $state === DueObligation::TYPE_SALE ? 'success' : 'info')
+                    ->alignCenter(),
                 TextColumn::make('document_number')
                     ->label('رقم المستند')
-                    ->searchable(),
-                TextColumn::make('invoice_date')
-                    ->label('التاريخ')
-                    ->date(),
+                    ->searchable()
+                    ->alignRight(),
                 TextColumn::make('party_name')
                     ->label('العميل / المورد')
-                    ->searchable(),
+                    ->searchable()
+                    ->wrap()
+                    ->alignRight(),
+                TextColumn::make('invoice_date')
+                    ->label('التاريخ')
+                    ->date('Y/m/d')
+                    ->toggleable()
+                    ->alignCenter(),
                 TextColumn::make('total_amount')
                     ->label('قيمة الفاتورة')
-                    ->money('EGP'),
+                    ->formatStateUsing(fn (mixed $state): string => ArabicMoney::format($state))
+                    ->alignRight(),
                 TextColumn::make('payment_type')
                     ->label('نوع التعامل')
-                    ->formatStateUsing(fn (string $state): string => PaymentType::from($state)->label()),
+                    ->formatStateUsing(fn (string $state): string => PaymentType::from($state)->label())
+                    ->badge()
+                    ->color(fn (string $state): string => $state === PaymentType::Cash->value ? 'gray' : 'warning')
+                    ->toggleable()
+                    ->alignCenter(),
                 TextColumn::make('due_date')
                     ->label('تاريخ الاستحقاق')
-                    ->date()
-                    ->placeholder('—'),
+                    ->date('Y/m/d')
+                    ->placeholder('—')
+                    ->alignCenter(),
                 TextColumn::make('days')
                     ->label('عدد الأيام')
-                    ->state(fn (DueObligation $record): string => self::daysLabel($record)),
+                    ->state(fn (DueObligation $record): string => self::daysLabel($record))
+                    ->toggleable()
+                    ->alignCenter(),
                 TextColumn::make('due_status')
                     ->label('حالة الاستحقاق')
                     ->state(fn (DueObligation $record): string => self::statusLabel($record))
                     ->badge()
-                    ->color(fn (DueObligation $record): string => self::statusColor($record)),
+                    ->color(fn (DueObligation $record): string => self::statusColor($record))
+                    ->alignCenter(),
             ])
             ->filters(self::filters())
+            ->emptyStateHeading('لا توجد استحقاقات')
+            ->emptyStateDescription('لا توجد فواتير مطابقة للبحث أو عوامل التصفية الحالية.')
+            ->emptyStateIcon('heroicon-o-calendar-days')
             ->recordActions([
                 Action::make('view_invoice')
                     ->label('عرض الفاتورة')
@@ -82,7 +101,9 @@ class DueObligationsTable
                     ->url(fn (DueObligation $record): string => $record->source_type === DueObligation::TYPE_SALE
                         ? SalesInvoiceResource::getUrl('view', ['record' => $record->source_id])
                         : PurchaseInvoiceResource::getUrl('view', ['record' => $record->source_id])),
-            ]);
+            ])
+            ->recordActionsColumnLabel('عرض الفاتورة')
+            ->recordActionsAlignment('center');
     }
 
     private static function daysLabel(DueObligation $record): string
@@ -95,11 +116,28 @@ class DueObligationsTable
             return 'اليوم';
         }
 
-        $days = (int) $record->due_date->diffInDays(now());
+        $days = abs((int) $record->due_date->copy()->startOfDay()->diffInDays(now()->startOfDay()));
 
         return $record->due_date->isFuture()
-            ? "متبقي {$days} أيام"
-            : "متأخر {$days} يوم";
+            ? 'متبقي '.self::dayCount($days)
+            : 'متأخر '.self::dayCount($days);
+    }
+
+    private static function dayCount(int $days): string
+    {
+        if ($days === 1) {
+            return 'يوم واحد';
+        }
+
+        if ($days === 2) {
+            return 'يومان';
+        }
+
+        if ($days >= 3 && $days <= 10) {
+            return "{$days} أيام";
+        }
+
+        return "{$days} يوم";
     }
 
     private static function status(DueObligation $record): string
@@ -120,7 +158,7 @@ class DueObligationsTable
     private static function statusLabel(DueObligation $record): string
     {
         return match (self::status($record)) {
-            DueObligation::STATUS_FUTURE => 'مستحق لاحقًا',
+            DueObligation::STATUS_FUTURE => 'مستحق لاحقاً',
             DueObligation::STATUS_TODAY => 'مستحق اليوم',
             DueObligation::STATUS_OVERDUE => 'متأخر',
             default => 'كاش',
@@ -149,6 +187,9 @@ class DueObligationsTable
                     DueObligation::TYPE_SALE => 'بيع',
                     DueObligation::TYPE_PURCHASE => 'شراء',
                 ]),
+            SelectFilter::make('payment_type')
+                ->label('نوع التعامل')
+                ->options(PaymentType::options()),
             SelectFilter::make('party')
                 ->label('العميل / المورد')
                 ->searchable()
@@ -177,6 +218,9 @@ class DueObligationsTable
                     DueObligation::STATUS_OVERDUE => 'متأخر',
                 ])
                 ->query(fn (Builder $query, array $data): Builder => self::applyStatusFilter($query, $data['value'] ?? null)),
+            Filter::make('overdue')
+                ->label('المتأخرة فقط')
+                ->query(fn (Builder $query): Builder => self::applyStatusFilter($query, DueObligation::STATUS_OVERDUE)),
             Filter::make('due_date')
                 ->label('نطاق تاريخ الاستحقاق')
                 ->schema([
