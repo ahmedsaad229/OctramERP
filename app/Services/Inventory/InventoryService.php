@@ -12,6 +12,29 @@ use InvalidArgumentException;
 
 class InventoryService
 {
+    public function warehouseBalance(?int $warehouseId, ?int $itemId): float
+    {
+        if (! $warehouseId || ! $itemId) {
+            return 0.0;
+        }
+
+        return (float) (StockBalance::query()
+            ->where('warehouse_id', $warehouseId)
+            ->where('item_id', $itemId)
+            ->value('quantity') ?? 0);
+    }
+
+    public function totalBalance(?int $itemId): float
+    {
+        if (! $itemId) {
+            return 0.0;
+        }
+
+        return (float) StockBalance::query()
+            ->where('item_id', $itemId)
+            ->sum('quantity');
+    }
+
     public function availableForSalesInvoice(
         int $warehouseId,
         int $itemId,

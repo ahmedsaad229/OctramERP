@@ -16,15 +16,31 @@ return new class extends Migration
                 ->index();
         });
 
-        DB::statement(
-            'UPDATE sales_invoices si
-             INNER JOIN (
-                 SELECT sales_invoice_id, MAX(electronic_invoice_number) AS electronic_invoice_number
-                 FROM receipt_voucher_allocations
-                 GROUP BY sales_invoice_id
-             ) allocations ON allocations.sales_invoice_id = si.id
-             SET si.electronic_invoice_number = allocations.electronic_invoice_number',
-        );
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement(
+                'UPDATE sales_invoices
+                 SET electronic_invoice_number = (
+                     SELECT MAX(receipt_voucher_allocations.electronic_invoice_number)
+                     FROM receipt_voucher_allocations
+                     WHERE receipt_voucher_allocations.sales_invoice_id = sales_invoices.id
+                 )
+                 WHERE EXISTS (
+                     SELECT 1
+                     FROM receipt_voucher_allocations
+                     WHERE receipt_voucher_allocations.sales_invoice_id = sales_invoices.id
+                 )',
+            );
+        } else {
+            DB::statement(
+                'UPDATE sales_invoices si
+                 INNER JOIN (
+                     SELECT sales_invoice_id, MAX(electronic_invoice_number) AS electronic_invoice_number
+                     FROM receipt_voucher_allocations
+                     GROUP BY sales_invoice_id
+                 ) allocations ON allocations.sales_invoice_id = si.id
+                 SET si.electronic_invoice_number = allocations.electronic_invoice_number',
+            );
+        }
 
         Schema::table('receipt_voucher_allocations', function (Blueprint $table) {
             $table->dropColumn('electronic_invoice_number');

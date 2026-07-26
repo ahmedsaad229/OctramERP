@@ -2,17 +2,19 @@
 
 namespace App\Filament\Resources\ReceiptVouchers\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\ReceiptVouchers\ReceiptVoucherResource;
 use App\Models\ReceiptVoucher;
 use App\Services\ReceiptVoucherService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
 class EditReceiptVoucher extends EditRecord
 {
     protected static string $resource = ReceiptVoucherResource::class;
+
+    protected static ?string $title = 'تعديل سند قبض عميل';
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
@@ -41,15 +43,15 @@ class EditReceiptVoucher extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'تم تعديل سند القبض بنجاح.';
+        return 'تم تعديل سند قبض العميل بنجاح.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
-                ->modalHeading('هل تريد حذف سند القبض؟')
-                ->successNotificationTitle('تم حذف سند القبض بنجاح.')
+            ProtectedDeleteAction::make()
+                ->modalHeading('حذف سند قبض العميل')
+                ->successNotificationTitle('تم حذف سند قبض العميل بنجاح.')
                 ->using(fn (ReceiptVoucher $record): bool => app(ReceiptVoucherService::class)->delete($record)),
         ];
     }

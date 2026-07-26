@@ -84,6 +84,7 @@ class SupplierPaymentVoucherForm
                     ->schema([
                         Select::make('purchase_invoice_id')
                             ->label('فاتورة الشراء')
+                            ->key(fn (Get $get): string => 'purchase-invoice-'.($get('supplier_id') ?: 'none'))
                             ->options(fn (Get $get, ?SupplierPaymentVoucher $record): array => self::invoiceOptions(
                                 (int) $get('supplier_id'),
                                 $record?->getKey(),
@@ -141,7 +142,7 @@ class SupplierPaymentVoucherForm
 
         return PurchaseInvoice::query()
             ->where('supplier_id', $supplierId)
-            ->with('items')
+            ->with(['items', 'supplierPaymentAllocations'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('id')
             ->get()
@@ -219,9 +220,9 @@ class SupplierPaymentVoucherForm
     private static function invoiceLabel(PurchaseInvoice $invoice): string
     {
         if (filled($invoice->invoice_number)) {
-            return "{$invoice->invoice_number} — {$invoice->code}";
+            return "فاتورة {$invoice->invoice_number} — {$invoice->code}";
         }
 
-        return $invoice->code;
+        return "فاتورة {$invoice->code}";
     }
 }

@@ -250,7 +250,7 @@ class InvoicePaymentTermsTest extends TestCase
             'source_type' => $sale->getMorphClass(),
             'source_id' => $sale->getKey(),
             'transaction_type' => PartyTransaction::TYPE_CUSTOMER_DEBIT,
-            'debit' => 200,
+            'debit' => 228,
             'credit' => 0,
         ]);
 
@@ -430,6 +430,10 @@ class InvoicePaymentTermsTest extends TestCase
             $table->date('invoice_date');
             $table->unsignedBigInteger('customer_id');
             $table->unsignedBigInteger('warehouse_id');
+            $table->unsignedBigInteger('sales_quotation_id')->nullable();
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->string('tax_type')->default('none');
+            $table->decimal('tax_amount', 15, 2)->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
         });
@@ -440,6 +444,9 @@ class InvoicePaymentTermsTest extends TestCase
             $table->string('invoice_number');
             $table->date('invoice_date');
             $table->unsignedBigInteger('warehouse_id');
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->string('tax_type')->default('none');
+            $table->decimal('tax_amount', 15, 2)->default(0);
             $table->text('notes')->nullable();
             $table->boolean('posted')->default(false);
             $table->timestamps();
@@ -448,9 +455,44 @@ class InvoicePaymentTermsTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('sales_invoice_id');
             $table->unsignedBigInteger('item_id');
+            $table->unsignedBigInteger('sales_quotation_item_id')->nullable();
+            $table->unsignedBigInteger('unit_id')->nullable();
             $table->decimal('quantity', 15, 2);
             $table->decimal('unit_price', 15, 2);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
             $table->decimal('line_total', 15, 2);
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('sales_quotations', function (Blueprint $table): void {
+            $table->id();
+            $table->string('quotation_number')->unique();
+            $table->date('quotation_date');
+            $table->date('valid_until')->nullable();
+            $table->unsignedBigInteger('customer_id');
+            $table->unsignedBigInteger('warehouse_id')->nullable();
+            $table->string('tax_type')->default('none');
+            $table->decimal('subtotal', 15, 2)->default(0);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('total_amount', 15, 2)->default(0);
+            $table->text('notes')->nullable();
+            $table->text('terms_and_conditions')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->timestamps();
+        });
+        Schema::create('sales_quotation_items', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('sales_quotation_id');
+            $table->unsignedBigInteger('item_id');
+            $table->unsignedBigInteger('unit_id');
+            $table->decimal('quantity', 15, 2);
+            $table->decimal('unit_price', 15, 2);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('line_total', 15, 2);
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
         Schema::create('purchase_invoice_items', function (Blueprint $table): void {

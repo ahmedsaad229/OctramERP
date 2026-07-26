@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Warehouses\Tables;
 
+use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -55,7 +55,7 @@ class WarehousesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    ProtectedDeleteBulkAction::make(),
                 ]),
             ]);
     }

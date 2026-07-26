@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -50,7 +50,7 @@ class CustomersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    ProtectedDeleteBulkAction::make(),
                 ]),
             ]);
     }

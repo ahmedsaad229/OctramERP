@@ -4,13 +4,13 @@ namespace App\Services\Inventory;
 
 use App\Models\GoodsReceiptVoucher;
 use App\Models\StockTransaction;
+use Illuminate\Support\Facades\DB;
 
 class GoodsReceiptService
 {
     public function __construct(
         private readonly InventoryService $inventoryService,
-    ) {
-    }
+    ) {}
 
     public function post(GoodsReceiptVoucher $voucher): void
     {
@@ -29,5 +29,16 @@ class GoodsReceiptService
             $voucher->posted = true;
             $voucher->save();
         }
+    }
+
+    public function delete(GoodsReceiptVoucher $voucher): bool
+    {
+        return DB::transaction(function () use ($voucher): bool {
+            $voucher = GoodsReceiptVoucher::query()->lockForUpdate()->findOrFail($voucher->getKey());
+            $this->inventoryService->deleteDocumentTransactions($voucher->code);
+            $voucher->items()->delete();
+
+            return (bool) $voucher->delete();
+        });
     }
 }

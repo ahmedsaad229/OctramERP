@@ -287,6 +287,9 @@ class DueObligationsTest extends TestCase
             $table->unsignedBigInteger('warehouse_id');
             $table->string('payment_type');
             $table->date('due_date')->nullable();
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->string('tax_type')->default('none');
+            $table->decimal('tax_amount', 15, 2)->default(0);
         });
         Schema::create('purchase_invoices', function (Blueprint $table): void {
             $table->id();
@@ -296,6 +299,9 @@ class DueObligationsTest extends TestCase
             $table->unsignedBigInteger('warehouse_id');
             $table->string('payment_type');
             $table->date('due_date')->nullable();
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->string('tax_type')->default('none');
+            $table->decimal('tax_amount', 15, 2)->default(0);
         });
         Schema::create('sales_invoice_items', function (Blueprint $table): void {
             $table->id();

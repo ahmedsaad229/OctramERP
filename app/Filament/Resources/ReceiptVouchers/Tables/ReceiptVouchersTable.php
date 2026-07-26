@@ -16,6 +16,7 @@ class ReceiptVouchersTable
     {
         return $table
             ->defaultSort('id', 'desc')
+            ->emptyStateHeading('لا توجد سندات قبض عملاء')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'allocations.salesInvoice.items',
                 'allocations.salesInvoice.receiptAllocations.receiptVoucher',

@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\PurchaseInvoices\Tables;
 
 use App\Enums\PaymentType;
+use App\Enums\TaxType;
 use App\Models\PurchaseInvoice;
+use App\Models\SupplierPurchaseOrder;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
@@ -11,6 +13,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 
 class PurchaseInvoicesTable
 {
@@ -19,7 +22,12 @@ class PurchaseInvoicesTable
         return $table
             ->defaultSort('id', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['items', 'supplier', 'warehouse'])
+                ->with([
+                    'items.item',
+                    'supplier',
+                    'warehouse',
+                    'supplierPurchaseOrder.purchaseRequest',
+                ])
                 ->withCount('items'))
             ->columns([
                 TextColumn::make('code')
@@ -27,7 +35,7 @@ class PurchaseInvoicesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('invoice_number')
-                    ->label('رقم فاتورة المورد')
+                    ->label('رقم فاتورة لدى المورد')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('invoice_date')
@@ -38,10 +46,38 @@ class PurchaseInvoicesTable
                     ->label('المورد')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('supplierPurchaseOrder.code')
+                    ->label('أمر التوريد')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('supplierPurchaseOrder.purchaseRequest.code')
+                    ->label('طلب الشراء')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('supplierPurchaseOrder.supplier_reference')
+                    ->label('مرجع المورد')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('items.item.code')
+                    ->label('أكواد الأصناف')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('items.item.name')
+                    ->label('الأصناف')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('total')
-                    ->label('إجمالي الفاتورة')
+                    ->label('الإجمالي النهائي')
                     ->state(fn (PurchaseInvoice $record): float => $record->totalAmount())
                     ->money('EGP'),
+                TextColumn::make('tax_type')->label('نوع الضريبة')
+                    ->formatStateUsing(fn (TaxType $state): string => $state->label())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('tax_amount')->label('قيمة الضريبة')->numeric(2)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_type')
                     ->label('نوع التعامل')
                     ->formatStateUsing(fn (PaymentType $state): string => $state->label())
@@ -87,6 +123,23 @@ class PurchaseInvoicesTable
             SelectFilter::make('payment_type')
                 ->label('نوع التعامل')
                 ->options(PaymentType::options()),
+            SelectFilter::make('tax_type')
+                ->label('نوع الضريبة')
+                ->options(TaxType::options()),
+            SelectFilter::make('supplier_purchase_order_id')
+                ->label('أمر التوريد')
+                ->options(fn (): array => Schema::hasTable('supplier_purchase_orders')
+                    ? SupplierPurchaseOrder::query()->orderBy('code')->pluck('code', 'id')->all()
+                    : [])
+                ->searchable()
+                ->preload()
+                ->query(fn (Builder $query, array $data): Builder => $query->when(
+                    $data['value'] ?? null,
+                    fn (Builder $query, mixed $value): Builder => $query->where(
+                        'supplier_purchase_order_id',
+                        $value,
+                    ),
+                )),
             Filter::make('due_date')
                 ->label('تاريخ الاستحقاق')
                 ->schema([

@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use App\Support\Octram\Traits\HasCode;
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Services\DocumentNumberService;
+use App\Support\Octram\Traits\HasCode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GoodsIssueVoucher extends BaseModel
 {
     use HasCode;
+    use ProtectsDocumentDeletion;
 
     protected static string $codePrefix = 'GIV';
 

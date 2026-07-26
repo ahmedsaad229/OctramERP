@@ -2,10 +2,15 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\TaxType;
 use App\Models\PartyTransaction;
 use App\Models\SalesInvoice;
+use App\Models\SalesQuotation;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
+use App\Services\CompanyTaxSetting;
+use App\Services\Documents\DocumentDeletionGuard;
+use App\Services\DocumentTaxCalculator;
 use App\Services\PartyTransactionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -23,9 +28,13 @@ class SalesInvoiceService
      */
     public function create(array $data): SalesInvoice
     {
+        $data['tax_type'] ??= app(CompanyTaxSetting::class)->resolve()->value;
+
         return DB::transaction(function () use ($data): SalesInvoice {
             $this->validateElectronicInvoiceNumber($data);
+            $this->validateQuotationLink($data);
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->applyTaxTotals($data, $items);
             $this->validateAvailableStock((int) ($data['warehouse_id'] ?? 0), $items);
             unset($data['items'], $data['document_number']);
 
@@ -44,7 +53,10 @@ class SalesInvoiceService
         return DB::transaction(function () use ($invoice, $data): SalesInvoice {
             $this->validateElectronicInvoiceNumber($data);
             $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->getKey());
+            $data['tax_type'] ??= $invoice->tax_type->value;
+            $this->validateQuotationLink($data, (int) $invoice->getKey());
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->applyTaxTotals($data, $items);
             $this->validateAvailableStock(
                 (int) ($data['warehouse_id'] ?? 0),
                 $items,
@@ -64,6 +76,7 @@ class SalesInvoiceService
     {
         return DB::transaction(function () use ($invoice): bool {
             $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->getKey());
+            app(DocumentDeletionGuard::class)->assertCanDelete($invoice);
 
             $this->inventoryService->deleteDocumentTransactions($invoice->document_number);
             $this->partyTransactionService->deleteDocumentTransaction($invoice);
@@ -102,7 +115,7 @@ class SalesInvoiceService
             $transactions,
         );
 
-        $invoiceTotal = (float) $invoice->items()->sum('line_total');
+        $invoiceTotal = $invoice->totalAmount();
 
         $this->partyTransactionService->replaceDocumentTransaction(
             $invoice->customer,
@@ -137,24 +150,34 @@ class SalesInvoiceService
                 ]);
             }
 
-            if (! isset($normalized[$itemId])) {
-                $normalized[$itemId] = [
+            $quotationItemId = filled($item['sales_quotation_item_id'] ?? null)
+                ? (int) $item['sales_quotation_item_id']
+                : null;
+            $key = $quotationItemId ? "quotation-{$quotationItemId}" : "item-{$itemId}";
+
+            if (! isset($normalized[$key])) {
+                $normalized[$key] = [
                     'item_id' => $itemId,
+                    'sales_quotation_item_id' => $quotationItemId,
+                    'unit_id' => $item['unit_id'] ?? null,
                     'quantity' => 0.0,
                     'unit_price' => $unitPrice,
+                    'discount_amount' => (float) ($item['discount_amount'] ?? 0),
+                    'tax_amount' => (float) ($item['tax_amount'] ?? 0),
                     'line_total' => 0.0,
+                    'notes' => $item['notes'] ?? null,
                 ];
             }
 
-            if ((float) $normalized[$itemId]['unit_price'] !== $unitPrice) {
+            if ((float) $normalized[$key]['unit_price'] !== $unitPrice) {
                 throw ValidationException::withMessages([
                     'items' => 'لا يمكن تكرار الصنف بأسعار بيع مختلفة.',
                 ]);
             }
 
-            $normalized[$itemId]['quantity'] += $quantity;
-            $normalized[$itemId]['line_total'] = round(
-                $normalized[$itemId]['quantity'] * $unitPrice,
+            $normalized[$key]['quantity'] += $quantity;
+            $normalized[$key]['line_total'] = round(
+                $normalized[$key]['quantity'] * $unitPrice,
                 2,
             );
         }
@@ -166,6 +189,38 @@ class SalesInvoiceService
         }
 
         return array_values($normalized);
+    }
+
+    private function validateQuotationLink(array $data, ?int $excludingSalesInvoiceId = null): void
+    {
+        $quotationId = (int) ($data['sales_quotation_id'] ?? 0);
+        if ($quotationId <= 0) {
+            foreach ($data['items'] ?? [] as $item) {
+                if (filled($item['sales_quotation_item_id'] ?? null)) {
+                    throw ValidationException::withMessages(['sales_quotation_id' => 'يجب اختيار عرض السعر المرتبط.']);
+                }
+            }
+
+            return;
+        }
+
+        $quotation = SalesQuotation::query()->with('items')->find($quotationId);
+        if (! $quotation || (int) $quotation->customer_id !== (int) ($data['customer_id'] ?? 0)) {
+            throw ValidationException::withMessages(['sales_quotation_id' => 'عرض السعر لا يخص العميل المحدد.']);
+        }
+
+        foreach ($data['items'] ?? [] as $index => $row) {
+            if (blank($row['sales_quotation_item_id'] ?? null)) {
+                continue;
+            }
+            $quotationItem = $quotation->items->firstWhere('id', (int) $row['sales_quotation_item_id']);
+            if (! $quotationItem || (int) $quotationItem->item_id !== (int) ($row['item_id'] ?? 0)) {
+                throw ValidationException::withMessages(["items.{$index}" => 'الصنف لا ينتمي إلى عرض السعر المحدد.']);
+            }
+            if ((float) ($row['quantity'] ?? 0) > $quotationItem->remainingQuantity($excludingSalesInvoiceId)) {
+                throw ValidationException::withMessages(["items.{$index}.quantity" => 'الكمية تتجاوز الكمية المتبقية في عرض السعر.']);
+            }
+        }
     }
 
     /**
@@ -205,5 +260,23 @@ class SalesInvoiceService
                 'electronic_invoice_number.min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
             ],
         )->validate();
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private function applyTaxTotals(array &$data, array $items): void
+    {
+        $taxType = TaxType::tryFrom((string) ($data['tax_type'] ?? TaxType::None->value));
+
+        if (! $taxType) {
+            throw ValidationException::withMessages(['tax_type' => 'نوع الضريبة المحدد غير صالح.']);
+        }
+
+        $subtotal = (float) collect($items)->sum('line_total');
+        $discount = max(0, round((float) ($data['discount_amount'] ?? 0), 2));
+        $calculation = app(DocumentTaxCalculator::class)->calculate($subtotal, $discount, $taxType);
+        $data['discount_amount'] = $discount;
+        $data['tax_type'] = $taxType->value;
+        $data['tax_amount'] = $calculation['tax_amount'];
+        unset($data['total'], $data['subtotal']);
     }
 }

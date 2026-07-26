@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SupplierPaymentVoucher extends BaseModel
 {
+    use ProtectsDocumentDeletion;
+
     protected $fillable = [
         'document_number',
         'voucher_date',

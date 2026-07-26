@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\SalesInvoice;
 use App\Services\Inventory\SalesInvoiceService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
@@ -23,11 +23,16 @@ class EditSalesInvoice extends EditRecord
     {
         $data['items'] = $this->getRecord()
             ->items()
-            ->get(['item_id', 'quantity', 'unit_price'])
+            ->get(['item_id', 'sales_quotation_item_id', 'unit_id', 'quantity', 'unit_price', 'discount_amount', 'tax_amount', 'notes'])
             ->map(fn ($item): array => [
                 'item_id' => $item->item_id,
+                'sales_quotation_item_id' => $item->sales_quotation_item_id,
+                'unit_id' => $item->unit_id,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
+                'discount_amount' => $item->discount_amount,
+                'tax_amount' => $item->tax_amount,
+                'notes' => $item->notes,
             ])
             ->all();
 
@@ -69,9 +74,8 @@ class EditSalesInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
+            ProtectedDeleteAction::make()
                 ->using(fn (SalesInvoice $record): bool => app(SalesInvoiceService::class)->delete($record)),
         ];
     }
-
 }

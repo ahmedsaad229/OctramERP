@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
 use App\Enums\PaymentType;
+use App\Enums\TaxType;
 use App\Models\SalesInvoice;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -35,9 +36,14 @@ class SalesInvoicesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('total')
-                    ->label('إجمالي الفاتورة')
+                    ->label('الإجمالي النهائي')
                     ->state(fn (SalesInvoice $record): float => $record->totalAmount())
                     ->money('EGP'),
+                TextColumn::make('tax_type')->label('نوع الضريبة')
+                    ->formatStateUsing(fn (TaxType $state): string => $state->label())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('tax_amount')->label('قيمة الضريبة')->numeric(2)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_type')
                     ->label('نوع التعامل')
                     ->formatStateUsing(fn (PaymentType $state): string => $state->label())
@@ -83,6 +89,9 @@ class SalesInvoicesTable
             SelectFilter::make('payment_type')
                 ->label('نوع التعامل')
                 ->options(PaymentType::options()),
+            SelectFilter::make('tax_type')
+                ->label('نوع الضريبة')
+                ->options(TaxType::options()),
             Filter::make('due_date')
                 ->label('تاريخ الاستحقاق')
                 ->schema([

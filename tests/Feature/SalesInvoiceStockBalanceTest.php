@@ -2,17 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TaxType;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
+use App\Filament\Resources\StockBalances\Pages\ListStockBalances;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\PartyTransaction;
 use App\Models\SalesInvoice;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Inventory\GoodsIssueService;
 use App\Services\Inventory\InventoryService;
 use App\Services\Inventory\SalesInvoiceService;
 use Illuminate\Database\Schema\Blueprint;
@@ -38,6 +42,125 @@ class SalesInvoiceStockBalanceTest extends TestCase
         $this->assertCreateUpdateValidationAndDeleteKeepInventoryOneForOne();
     }
 
+    public function test_sales_vat_is_server_calculated_and_customer_posting_is_replaced(): void
+    {
+        [$warehouse] = $this->warehouses();
+        [$item] = $this->items();
+        $customer = $this->customer();
+        $this->seedStock($warehouse, $item, 10);
+        $service = app(SalesInvoiceService::class);
+        $data = [
+            'electronic_invoice_number' => 700,
+            'payment_type' => 'cash',
+            'invoice_date' => '2026-07-26',
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'tax_type' => TaxType::Vat14->value,
+            'discount_amount' => 10,
+            'tax_amount' => 999999,
+            'total' => 1,
+            'items' => [['item_id' => $item->id, 'quantity' => 2, 'unit_price' => 100]],
+        ];
+
+        $invoice = $service->create($data);
+
+        $this->assertSame(26.6, (float) $invoice->tax_amount);
+        $this->assertSame(216.6, $invoice->totalAmount());
+        $this->assertSame(8.0, $this->balance($warehouse, $item));
+        $this->assertSame(216.6, (float) PartyTransaction::query()
+            ->where('source_type', $invoice->getMorphClass())
+            ->where('source_id', $invoice->id)
+            ->value('debit'));
+
+        $data['tax_type'] = TaxType::None->value;
+        $service->update($invoice, $data);
+
+        $this->assertSame(1, PartyTransaction::query()
+            ->where('source_type', $invoice->getMorphClass())
+            ->where('source_id', $invoice->id)
+            ->count());
+    }
+
+    public function test_stock_balance_resource_reads_current_balances_and_polls_for_external_postings(): void
+    {
+        $this->actingAs(User::factory()->create());
+        [$warehouse] = $this->warehouses();
+        [$item] = $this->items();
+        $this->seedStock($warehouse, $item, 7);
+
+        Livewire::test(ListStockBalances::class)
+            ->assertOk()
+            ->assertSee($item->name)
+            ->assertSee('7')
+            ->assertSeeHtml('wire:poll.5s');
+    }
+
+    public function test_selling_more_than_available_stock_rolls_back_everything(): void
+    {
+        [$warehouse] = $this->warehouses();
+        [$item] = $this->items();
+        $customer = $this->customer();
+        $this->seedStock($warehouse, $item, 2);
+
+        try {
+            app(SalesInvoiceService::class)->create([
+                'electronic_invoice_number' => 701,
+                'payment_type' => 'cash',
+                'invoice_date' => '2026-07-26',
+                'customer_id' => $customer->getKey(),
+                'warehouse_id' => $warehouse->getKey(),
+                'items' => [[
+                    'item_id' => $item->getKey(),
+                    'quantity' => 3,
+                    'unit_price' => 100,
+                ]],
+            ]);
+
+            $this->fail('The unavailable stock sale should have failed.');
+        } catch (ValidationException $exception) {
+            $this->assertContains(
+                'الكمية المطلوبة غير متوفرة في المخزن.',
+                $exception->errors()['items'],
+            );
+        }
+
+        $this->assertDatabaseCount('sales_invoices', 0);
+        $this->assertDatabaseCount('sales_invoice_items', 0);
+        $this->assertDatabaseCount('stock_transactions', 1);
+        $this->assertSame(2.0, $this->balance($warehouse, $item));
+    }
+
+    public function test_goods_issue_more_than_available_stock_rolls_back_everything(): void
+    {
+        [$warehouse] = $this->warehouses();
+        [$item] = $this->items();
+        $this->seedStock($warehouse, $item, 2);
+
+        try {
+            app(GoodsIssueService::class)->create([
+                'voucher_date' => '2026-07-26',
+                'warehouse_id' => $warehouse->getKey(),
+                'items' => [[
+                    'item_id' => $item->getKey(),
+                    'quantity' => 3,
+                    'unit_cost' => 50,
+                ]],
+            ]);
+
+            $this->fail('The unavailable stock goods issue should have failed.');
+        } catch (ValidationException $exception) {
+            $this->assertContains(
+                'الكمية المطلوبة غير متوفرة في المخزن.',
+                $exception->errors()['items'],
+            );
+        }
+
+        $this->assertDatabaseCount('goods_issue_vouchers', 0);
+        $this->assertDatabaseCount('goods_issue_items', 0);
+        $this->assertDatabaseCount('stock_transactions', 1);
+        $this->assertSame(2.0, $this->balance($warehouse, $item));
+    }
+
     private function assertCreateFormReactsToItemAndWarehouseBalances(): void
     {
         $this->actingAs(User::factory()->create());
@@ -50,21 +173,24 @@ class SalesInvoiceStockBalanceTest extends TestCase
         $this->seedStock($firstWarehouse, $otherItem, 8);
 
         $component = Livewire::test(CreateSalesInvoice::class)
-            ->set('data.warehouse_id', $firstWarehouse->getKey());
+            ->set('data.warehouse_id', $firstWarehouse->getKey())
+            ->assertSeeHtml('type="text"')
+            ->assertSeeHtml('inputmode="decimal"')
+            ->assertSeeHtml('octram-quantity-input');
 
         $rowKey = array_key_first($component->get('data.items'));
 
         $component
             ->set("data.items.{$rowKey}.item_id", $stockedItem->getKey())
-            ->assertSee('25.00')
+            ->assertSee('25')
             ->set("data.items.{$rowKey}.item_id", $otherItem->getKey())
-            ->assertSee('8.00')
+            ->assertSee('8')
             ->set('data.warehouse_id', $secondWarehouse->getKey())
-            ->assertSee('0.00')
+            ->assertSee('0')
             ->set("data.items.{$rowKey}.item_id", $stockedItem->getKey())
-            ->assertSee('4.00')
+            ->assertSee('4')
             ->set("data.items.{$rowKey}.item_id", null)
-            ->assertSee('0.00')
+            ->assertSee('0')
             ->set('data.items', [
                 $rowKey => [
                     'item_id' => $stockedItem->getKey(),
@@ -78,11 +204,11 @@ class SalesInvoiceStockBalanceTest extends TestCase
                 ],
             ])
             ->set('data.warehouse_id', $firstWarehouse->getKey())
-            ->assertSee('25.00')
-            ->assertSee('8.00')
+            ->assertSee('25')
+            ->assertSee('8')
             ->set('data.warehouse_id', $secondWarehouse->getKey())
-            ->assertSee('4.00')
-            ->assertSee('0.00');
+            ->assertSee('4')
+            ->assertSee('0');
     }
 
     private function assertEditFormAddsBackTheCurrentInvoiceIssue(): void
@@ -118,7 +244,7 @@ class SalesInvoiceStockBalanceTest extends TestCase
         );
 
         Livewire::test(EditSalesInvoice::class, ['record' => $invoice->getKey()])
-            ->assertSee('10.00');
+            ->assertSee('10');
     }
 
     private function assertCreateUpdateValidationAndDeleteKeepInventoryOneForOne(): void
@@ -343,8 +469,12 @@ class SalesInvoiceStockBalanceTest extends TestCase
             $table->date('invoice_date');
             $table->unsignedBigInteger('customer_id');
             $table->unsignedBigInteger('warehouse_id');
+            $table->unsignedBigInteger('sales_quotation_id')->nullable();
             $table->string('payment_type')->default('cash');
             $table->date('due_date')->nullable();
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->string('tax_type')->default('none');
+            $table->decimal('tax_amount', 15, 2)->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
         });
@@ -352,9 +482,63 @@ class SalesInvoiceStockBalanceTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('sales_invoice_id');
             $table->unsignedBigInteger('item_id');
+            $table->unsignedBigInteger('sales_quotation_item_id')->nullable();
+            $table->unsignedBigInteger('unit_id')->nullable();
             $table->decimal('quantity', 15, 2);
             $table->decimal('unit_price', 15, 2);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
             $table->decimal('line_total', 15, 2);
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('sales_quotations', function (Blueprint $table): void {
+            $table->id();
+            $table->string('quotation_number')->unique();
+            $table->date('quotation_date');
+            $table->date('valid_until')->nullable();
+            $table->unsignedBigInteger('customer_id');
+            $table->unsignedBigInteger('warehouse_id')->nullable();
+            $table->string('tax_type')->default('none');
+            $table->decimal('subtotal', 15, 2)->default(0);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('total_amount', 15, 2)->default(0);
+            $table->text('notes')->nullable();
+            $table->text('terms_and_conditions')->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->timestamps();
+        });
+        Schema::create('sales_quotation_items', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('sales_quotation_id');
+            $table->unsignedBigInteger('item_id');
+            $table->unsignedBigInteger('unit_id');
+            $table->decimal('quantity', 15, 2);
+            $table->decimal('unit_price', 15, 2);
+            $table->decimal('discount_amount', 15, 2)->default(0);
+            $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('line_total', 15, 2);
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('goods_issue_vouchers', function (Blueprint $table): void {
+            $table->id();
+            $table->string('code')->unique();
+            $table->date('voucher_date');
+            $table->unsignedBigInteger('warehouse_id');
+            $table->text('notes')->nullable();
+            $table->boolean('posted')->default(false);
+            $table->timestamps();
+        });
+        Schema::create('goods_issue_items', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('goods_issue_voucher_id');
+            $table->unsignedBigInteger('item_id');
+            $table->decimal('quantity', 15, 2);
+            $table->decimal('unit_cost', 15, 2)->default(0);
+            $table->decimal('total_cost', 15, 2)->default(0);
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
         Schema::create('stock_transactions', function (Blueprint $table): void {

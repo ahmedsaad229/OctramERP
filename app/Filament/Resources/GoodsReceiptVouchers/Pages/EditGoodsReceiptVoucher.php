@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\GoodsReceiptVouchers\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\GoodsReceiptVouchers\GoodsReceiptVoucherResource;
+use App\Models\GoodsReceiptVoucher;
 use App\Services\Inventory\GoodsReceiptService;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditGoodsReceiptVoucher extends EditRecord
@@ -14,7 +15,8 @@ class EditGoodsReceiptVoucher extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            ProtectedDeleteAction::make()
+                ->using(fn (GoodsReceiptVoucher $record): bool => app(GoodsReceiptService::class)->delete($record)),
         ];
     }
 

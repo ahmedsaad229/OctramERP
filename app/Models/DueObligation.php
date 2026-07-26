@@ -54,13 +54,22 @@ class DueObligation extends Model
                 'invoices.due_date',
                 'invoices.warehouse_id',
                 'warehouses.name as warehouse_name',
-            ])
-            ->selectSub(
-                DB::table('sales_invoice_items')
-                    ->selectRaw('COALESCE(SUM(line_total), 0)')
-                    ->whereColumn('sales_invoice_id', 'invoices.id'),
-                'total_amount',
-            );
+                DB::raw('(
+                    CASE
+                        WHEN (
+                            SELECT COALESCE(SUM(line_total), 0)
+                            FROM sales_invoice_items
+                            WHERE sales_invoice_id = invoices.id
+                        ) - COALESCE(invoices.discount_amount, 0) > 0
+                        THEN (
+                            SELECT COALESCE(SUM(line_total), 0)
+                            FROM sales_invoice_items
+                            WHERE sales_invoice_id = invoices.id
+                        ) - COALESCE(invoices.discount_amount, 0)
+                        ELSE 0
+                    END
+                ) + COALESCE(invoices.tax_amount, 0) as total_amount'),
+            ]);
 
         $purchases = DB::table('purchase_invoices as invoices')
             ->join('suppliers as parties', 'parties.id', '=', 'invoices.supplier_id')
@@ -76,13 +85,22 @@ class DueObligation extends Model
                 'invoices.due_date',
                 'invoices.warehouse_id',
                 'warehouses.name as warehouse_name',
-            ])
-            ->selectSub(
-                DB::table('purchase_invoice_items')
-                    ->selectRaw('COALESCE(SUM(quantity * unit_cost), 0)')
-                    ->whereColumn('purchase_invoice_id', 'invoices.id'),
-                'total_amount',
-            );
+                DB::raw('(
+                    CASE
+                        WHEN (
+                            SELECT COALESCE(SUM(quantity * unit_cost), 0)
+                            FROM purchase_invoice_items
+                            WHERE purchase_invoice_id = invoices.id
+                        ) - COALESCE(invoices.discount_amount, 0) > 0
+                        THEN (
+                            SELECT COALESCE(SUM(quantity * unit_cost), 0)
+                            FROM purchase_invoice_items
+                            WHERE purchase_invoice_id = invoices.id
+                        ) - COALESCE(invoices.discount_amount, 0)
+                        ELSE 0
+                    END
+                ) + COALESCE(invoices.tax_amount, 0) as total_amount'),
+            ]);
 
         return $sales->unionAll($purchases);
     }

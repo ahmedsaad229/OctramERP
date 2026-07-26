@@ -3,14 +3,18 @@
 namespace App\Models;
 
 use App\Enums\PaymentType;
+use App\Enums\TaxType;
 use App\Models\Concerns\HasInformationalPaymentTerms;
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Services\DocumentNumberService;
+use App\Services\DocumentTaxCalculator;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesInvoice extends BaseModel
 {
     use HasInformationalPaymentTerms;
+    use ProtectsDocumentDeletion;
 
     protected $fillable = [
         'document_number',
@@ -18,8 +22,12 @@ class SalesInvoice extends BaseModel
         'invoice_date',
         'customer_id',
         'warehouse_id',
+        'sales_quotation_id',
         'payment_type',
         'due_date',
+        'discount_amount',
+        'tax_type',
+        'tax_amount',
         'notes',
     ];
 
@@ -28,6 +36,9 @@ class SalesInvoice extends BaseModel
         'invoice_date' => 'date',
         'payment_type' => PaymentType::class,
         'due_date' => 'date',
+        'discount_amount' => 'decimal:2',
+        'tax_type' => TaxType::class,
+        'tax_amount' => 'decimal:2',
     ];
 
     protected static function booted(): void
@@ -50,6 +61,11 @@ class SalesInvoice extends BaseModel
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function salesQuotation(): BelongsTo
+    {
+        return $this->belongsTo(SalesQuotation::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(SalesInvoiceItem::class);
@@ -62,9 +78,15 @@ class SalesInvoice extends BaseModel
 
     public function totalAmount(): float
     {
-        return (float) ($this->relationLoaded('items')
+        $subtotal = (float) ($this->relationLoaded('items')
             ? $this->items->sum('line_total')
             : $this->items()->sum('line_total'));
+
+        return app(DocumentTaxCalculator::class)->calculate(
+            $subtotal,
+            (float) $this->discount_amount,
+            $this->tax_type ?? TaxType::None,
+        )['total'];
     }
 
     public function paidAmount(?int $excludingReceiptVoucherId = null): float

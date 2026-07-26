@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\OpeningStockVouchers\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\OpeningStockVouchers\OpeningStockVoucherResource;
+use App\Models\OpeningStockVoucher;
 use App\Services\Inventory\OpeningStockService;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditOpeningStockVoucher extends EditRecord
@@ -14,7 +15,8 @@ class EditOpeningStockVoucher extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            ProtectedDeleteAction::make()
+                ->using(fn (OpeningStockVoucher $record): bool => app(OpeningStockService::class)->delete($record)),
         ];
     }
 

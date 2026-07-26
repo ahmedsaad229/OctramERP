@@ -24,7 +24,9 @@ class DueObligationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'الاستحقاقات';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'الحسابات المالية';
+    protected static string|\UnitEnum|null $navigationGroup = 'المشتريات';
+
+    protected static ?int $navigationSort = 50;
 
     public static function form(Schema $schema): Schema
     {

@@ -28,9 +28,9 @@ class SupplierPaymentVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'سندات صرف الموردين';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'الحسابات المالية';
+    protected static string|\UnitEnum|null $navigationGroup = 'المشتريات';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 40;
 
     public static function form(Schema $schema): Schema
     {

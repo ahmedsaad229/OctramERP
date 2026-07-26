@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\PaymentType;
+use App\Enums\TaxType;
 use App\Models\Concerns\HasInformationalPaymentTerms;
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Services\DocumentNumberService;
+use App\Services\DocumentTaxCalculator;
 use App\Support\Octram\Traits\HasCode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,19 +16,25 @@ class PurchaseInvoice extends BaseModel
 {
     use HasCode;
     use HasInformationalPaymentTerms;
+    use ProtectsDocumentDeletion;
 
     protected static string $codePrefix = 'PIV';
 
     protected static string $documentType = DocumentNumberService::PURCHASE_INVOICE;
 
     protected $fillable = [
-        'code', 'supplier_id', 'invoice_number', 'invoice_date', 'warehouse_id', 'payment_type', 'due_date', 'notes', 'posted',
+        'code', 'supplier_id', 'supplier_purchase_order_id', 'invoice_number', 'invoice_date',
+        'warehouse_id', 'payment_type', 'due_date', 'discount_amount', 'tax_type',
+        'tax_amount', 'notes', 'posted',
     ];
 
     protected $casts = [
         'invoice_date' => 'date',
         'payment_type' => PaymentType::class,
         'due_date' => 'date',
+        'discount_amount' => 'decimal:2',
+        'tax_type' => TaxType::class,
+        'tax_amount' => 'decimal:2',
         'posted' => 'boolean',
     ];
 
@@ -37,6 +46,11 @@ class PurchaseInvoice extends BaseModel
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function supplierPurchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(SupplierPurchaseOrder::class);
     }
 
     public function items(): HasMany
@@ -53,9 +67,15 @@ class PurchaseInvoice extends BaseModel
     {
         $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
 
-        return (float) $items->sum(
+        $subtotal = (float) $items->sum(
             fn (PurchaseInvoiceItem $item): float => (float) $item->quantity * (float) $item->unit_cost,
         );
+
+        return app(DocumentTaxCalculator::class)->calculate(
+            $subtotal,
+            (float) $this->discount_amount,
+            $this->tax_type ?? TaxType::None,
+        )['total'];
     }
 
     public function paidAmount(?int $excludingSupplierPaymentVoucherId = null): float

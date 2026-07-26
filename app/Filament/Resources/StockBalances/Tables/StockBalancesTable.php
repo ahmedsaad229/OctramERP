@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\StockBalances\Tables;
 
 use App\Models\Category;
+use App\Support\QuantityFormatter;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -13,6 +14,7 @@ class StockBalancesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->poll('5s')
             ->defaultSort('updated_at', 'desc')
             ->columns([
                 TextColumn::make('item.code')
@@ -32,12 +34,15 @@ class StockBalancesTable
 
                 TextColumn::make('quantity')
                     ->label('الكمية')
-                    ->numeric(2)
+                    ->formatStateUsing(fn (mixed $state): string => QuantityFormatter::formatForDisplay($state))
+                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                    ->alignCenter()
                     ->sortable(),
 
                 TextColumn::make('average_cost')
                     ->label('متوسط التكلفة')
                     ->money('EGP')
+                    ->alignCenter()
                     ->sortable(),
             ])
             ->filters([

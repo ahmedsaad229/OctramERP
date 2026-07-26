@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\OpeningStockVouchers\Tables;
 
-use App\Models\OpeningStockVoucher;
-use Filament\Actions\DeleteBulkAction;
+use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -60,7 +59,7 @@ class OpeningStockVouchersTable
 
             ->toolbarActions([
 
-                DeleteBulkAction::make(),
+                ProtectedDeleteBulkAction::make(),
 
             ]);
     }

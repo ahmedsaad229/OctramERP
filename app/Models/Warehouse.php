@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Support\Octram\Traits\HasCode;
 
 class Warehouse extends BaseModel
 {
     use HasCode;
+    use ProtectsDocumentDeletion;
 
     protected static string $codePrefix = 'WAR';
 

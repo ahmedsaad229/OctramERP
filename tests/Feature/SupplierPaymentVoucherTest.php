@@ -48,9 +48,33 @@ class SupplierPaymentVoucherTest extends TestCase
     public function test_supplier_payment_voucher_full_lifecycle(): void
     {
         [$supplier, $otherSupplier, $treasury, $warehouse] = $this->fixtures();
-        $invoice = $this->invoice($supplier, $warehouse, 'SUP-INV-001', 1000);
-        $secondInvoice = $this->invoice($supplier, $warehouse, 'SUP-INV-002', 600);
-        $otherInvoice = $this->invoice($otherSupplier, $warehouse, 'OTHER-INV-001', 500);
+        $invoice = $this->invoice($supplier, $warehouse, 'SUP-INV-001', 1000, 'credit');
+        $secondInvoice = $this->invoice($supplier, $warehouse, 'SUP-INV-002', 600, 'cash');
+        $otherInvoice = $this->invoice($otherSupplier, $warehouse, 'OTHER-INV-001', 500, 'cash');
+
+        $initialOptions = SupplierPaymentVoucherForm::invoiceOptions($supplier->getKey());
+        $this->assertArrayHasKey($invoice->getKey(), $initialOptions);
+        $this->assertArrayHasKey($secondInvoice->getKey(), $initialOptions);
+        $this->assertStringContainsString(
+            "فاتورة SUP-INV-001 — {$invoice->code} — المتبقي: 1,000.00 ج.م",
+            $initialOptions[$invoice->getKey()],
+        );
+        $this->assertStringContainsString(
+            "فاتورة SUP-INV-002 — {$secondInvoice->code} — المتبقي: 600.00 ج.م",
+            $initialOptions[$secondInvoice->getKey()],
+        );
+        $this->assertArrayNotHasKey($otherInvoice->getKey(), $initialOptions);
+
+        Livewire::test(CreateSupplierPaymentVoucher::class)
+            ->set('data.supplier_id', $supplier->getKey())
+            ->assertSee('SUP-INV-001')
+            ->assertSee('SUP-INV-002')
+            ->set('data.purchase_invoice_id', $invoice->getKey())
+            ->set('data.supplier_id', $otherSupplier->getKey())
+            ->assertSet('data.purchase_invoice_id', null)
+            ->assertSee('OTHER-INV-001')
+            ->assertDontSee('SUP-INV-001')
+            ->assertDontSee('SUP-INV-002');
 
         app(PartyTransactionService::class)->replaceDocumentTransaction(
             $supplier,
@@ -300,14 +324,15 @@ class SupplierPaymentVoucherTest extends TestCase
         Warehouse $warehouse,
         string $invoiceNumber,
         float $total,
+        string $paymentType,
     ): PurchaseInvoice {
         $invoice = PurchaseInvoice::create([
             'supplier_id' => $supplier->getKey(),
             'invoice_number' => $invoiceNumber,
             'invoice_date' => '2026-07-01',
             'warehouse_id' => $warehouse->getKey(),
-            'payment_type' => 'credit',
-            'due_date' => '2026-08-01',
+            'payment_type' => $paymentType,
+            'due_date' => $paymentType === 'credit' ? '2026-08-01' : null,
         ]);
         $invoice->items()->create([
             'item_id' => 1,

@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\Items\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\Items\ItemResource;
-use Filament\Actions\DeleteAction;
+use App\Services\Documents\DocumentDeletionService;
 use Filament\Resources\Pages\EditRecord;
 
 class EditItem extends EditRecord
@@ -13,7 +14,8 @@ class EditItem extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            ProtectedDeleteAction::make()
+                ->using(fn ($record): bool => app(DocumentDeletionService::class)->delete($record)),
         ];
     }
 }

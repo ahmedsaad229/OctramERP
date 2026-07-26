@@ -10,11 +10,13 @@ class ListReceiptVouchers extends ListRecords
 {
     protected static string $resource = ReceiptVoucherResource::class;
 
+    protected static ?string $title = 'سندات قبض العملاء';
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('إضافة سند قبض'),
+                ->label('إضافة سند قبض عميل'),
         ];
     }
 }

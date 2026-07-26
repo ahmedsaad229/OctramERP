@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\SupplierPaymentVouchers\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\SupplierPaymentVouchers\SupplierPaymentVoucherResource;
 use App\Models\SupplierPaymentVoucher;
 use App\Services\SupplierPaymentVoucherService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -41,7 +41,7 @@ class EditSupplierPaymentVoucher extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
+            ProtectedDeleteAction::make()
                 ->modalHeading('هل تريد حذف سند صرف المورد؟')
                 ->successNotificationTitle('تم حذف سند الصرف بنجاح.')
                 ->using(fn (SupplierPaymentVoucher $record): bool => app(

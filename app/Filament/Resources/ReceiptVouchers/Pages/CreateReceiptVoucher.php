@@ -12,6 +12,8 @@ class CreateReceiptVoucher extends CreateRecord
 {
     protected static string $resource = ReceiptVoucherResource::class;
 
+    protected static ?string $title = 'إضافة سند قبض عميل';
+
     protected static bool $canCreateAnother = false;
 
     protected function handleRecordCreation(array $data): Model
@@ -22,11 +24,11 @@ class CreateReceiptVoucher extends CreateRecord
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()
-            ->label('حفظ سند القبض');
+            ->label('حفظ سند قبض العميل');
     }
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'تم حفظ سند القبض بنجاح.';
+        return 'تم إنشاء سند قبض العميل بنجاح.';
     }
 }

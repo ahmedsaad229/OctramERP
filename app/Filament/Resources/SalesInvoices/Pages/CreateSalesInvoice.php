@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Services\Inventory\SalesInvoiceService;
+use App\Services\SalesQuotationConversionService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -18,6 +19,19 @@ class CreateSalesInvoice extends CreateRecord
     protected static string $resource = SalesInvoiceResource::class;
 
     protected static bool $canCreateAnother = false;
+
+    protected function afterFill(): void
+    {
+        $quotationId = request()->integer('sales_quotation');
+        if (! $quotationId) {
+            return;
+        }
+        $this->data = [
+            ...$this->data,
+            'sales_quotation_id' => $quotationId,
+            ...app(SalesQuotationConversionService::class)->payload($quotationId),
+        ];
+    }
 
     protected function handleRecordCreation(array $data): Model
     {
@@ -50,5 +64,4 @@ class CreateSalesInvoice extends CreateRecord
         return parent::getCreateFormAction()
             ->label('حفظ الفاتورة');
     }
-
 }

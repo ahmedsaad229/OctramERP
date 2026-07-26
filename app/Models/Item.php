@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Support\Octram\Traits\HasCode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Item extends BaseModel
 {
     use HasCode;
+    use ProtectsDocumentDeletion;
 
     protected static string $codePrefix = 'ITM';
 

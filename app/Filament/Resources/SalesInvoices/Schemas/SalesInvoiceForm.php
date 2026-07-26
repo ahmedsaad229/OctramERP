@@ -3,10 +3,16 @@
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
 use App\Enums\PaymentType;
+use App\Enums\TaxType;
 use App\Models\Item;
 use App\Models\SalesInvoice;
+use App\Services\CompanyTaxSetting;
+use App\Services\DocumentTaxCalculator;
 use App\Services\Inventory\InventoryService;
+use App\Services\SalesQuotationConversionService;
+use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -57,6 +63,25 @@ class SalesInvoiceForm
                                 'min' => 'رقم الفاتورة الإلكترونية يجب أن يكون أكبر من صفر.',
                             ]),
 
+                        Select::make('sales_quotation_id')
+                            ->label('عرض السعر')
+                            ->options(fn (Get $get, ?SalesInvoice $record): array => app(SalesQuotationConversionService::class)->options(
+                                filled($get('customer_id')) ? (int) $get('customer_id') : null,
+                                $record?->sales_quotation_id,
+                            ))
+                            ->default(fn (): ?int => request()->integer('sales_quotation') ?: null)
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state, ?SalesInvoice $record): void {
+                                if (blank($state)) {
+                                    return;
+                                }
+                                foreach (app(SalesQuotationConversionService::class)->payload((int) $state, $record?->getKey()) as $field => $value) {
+                                    $set($field, $value);
+                                }
+                            }),
+
                         Select::make('payment_type')
                             ->label('نوع التعامل')
                             ->options(PaymentType::options())
@@ -85,6 +110,7 @@ class SalesInvoiceForm
                             )
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->required(),
 
                         Select::make('warehouse_id')
@@ -97,6 +123,16 @@ class SalesInvoiceForm
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->live(),
+
+                        Select::make('tax_type')
+                            ->label('الضريبة')
+                            ->options([
+                                TaxType::Vat14->value => 'ضريبة قيمة مضافة 14%',
+                                TaxType::None->value => 'بدون ضريبة',
+                            ])
+                            ->default(fn (): string => app(CompanyTaxSetting::class)->resolve()->value)
+                            ->native(false)
                             ->live(),
 
                     ])->columnSpanFull(),
@@ -114,6 +150,10 @@ class SalesInvoiceForm
                                 'md' => 6,
                                 'xl' => 13,
                             ])->schema([
+                                Hidden::make('sales_quotation_item_id'),
+                                Hidden::make('unit_id'),
+                                Hidden::make('discount_amount'),
+                                Hidden::make('tax_amount'),
                                 Select::make('item_id')
                                     ->label('الصنف')
                                     ->options(fn (): array => Item::query()
@@ -140,8 +180,16 @@ class SalesInvoiceForm
 
                                 TextInput::make('quantity')
                                     ->label('الكمية')
-                                    ->numeric()
-                                    ->minValue(0.01)
+                                    ->type('text')
+                                    ->formatStateUsing(fn (mixed $state): ?string => QuantityFormatter::normalizeForInput($state))
+                                    ->mutateStateForValidationUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->dehydrateStateUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->inputMode('decimal')
+                                    ->extraInputAttributes(QuantityFormatter::inputAttributes())
+                                    ->rules(['numeric', 'gt:0'])
+                                    ->afterStateUpdated(fn (TextInput $component, mixed $state) => $component->state(
+                                        QuantityFormatter::normalizeForInput($state) ?? $state,
+                                    ))
                                     ->default(1)
                                     ->required()
                                     ->live()
@@ -153,14 +201,14 @@ class SalesInvoiceForm
 
                                 Placeholder::make('warehouse_stock_balance')
                                     ->label('الرصيد بالمخزن')
-                                    ->content(fn (Get $get, ?SalesInvoice $record): string => number_format(
+                                    ->content(fn (Get $get, ?SalesInvoice $record): string => QuantityFormatter::formatForDisplay(
                                         app(InventoryService::class)->availableForSalesInvoice(
                                             (int) $get('../../warehouse_id'),
                                             (int) $get('item_id'),
                                             $record?->getKey(),
                                         ),
-                                        2,
                                     ))
+                                    ->extraAttributes(QuantityFormatter::displayAttributes())
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 3,
@@ -169,7 +217,16 @@ class SalesInvoiceForm
 
                                 TextInput::make('unit_price')
                                     ->label('سعر البيع')
-                                    ->numeric()
+                                    ->type('text')
+                                    ->formatStateUsing(fn (mixed $state): ?string => QuantityFormatter::normalizeForInput($state))
+                                    ->mutateStateForValidationUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->dehydrateStateUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->inputMode('decimal')
+                                    ->rules(['numeric', 'gte:0'])
+                                    ->afterStateUpdated(fn (TextInput $component, mixed $state) => $component->state(
+                                        QuantityFormatter::normalizeForInput($state) ?? $state,
+                                    ))
+                                    ->extraInputAttributes(QuantityFormatter::inputAttributes())
                                     ->minValue(0)
                                     ->default(0)
                                     ->required()
@@ -191,6 +248,10 @@ class SalesInvoiceForm
                                         'md' => 3,
                                         'xl' => 1,
                                     ]),
+
+                                TextInput::make('notes')
+                                    ->label('ملاحظات')
+                                    ->columnSpanFull(),
                             ])->columnSpanFull(),
                         ])
                         ->defaultItems(1)
@@ -199,16 +260,17 @@ class SalesInvoiceForm
                         ->reorderable(false)
                         ->columnSpanFull(),
 
-                    Placeholder::make('invoice_total')
-                        ->label('إجمالي الفاتورة')
-                        ->content(fn (Get $get): string => number_format(
-                            collect($get('items') ?? [])->sum(
-                                fn (array $item): float => (float) ($item['quantity'] ?? 0)
-                                    * (float) ($item['unit_price'] ?? 0),
-                            ),
-                            2,
-                        ))
-                        ->columnSpanFull(),
+                    Grid::make(['default' => 1, 'md' => 5])->schema([
+                        Placeholder::make('invoice_subtotal')->label('الإجمالي الفرعي')
+                            ->content(fn (Get $get): string => self::money(self::subtotal($get))),
+                        TextInput::make('discount_amount')->label('الخصم')->numeric()->minValue(0)->default(0)->live(),
+                        Placeholder::make('invoice_taxable')->label('صافي قبل الضريبة')
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount'])),
+                        Placeholder::make('invoice_tax')->label('الضريبة')
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount'])),
+                        Placeholder::make('invoice_total')->label('الإجمالي النهائي')
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['total'])),
+                    ])->columnSpanFull(),
                 ])
                 ->columns(1)
                 ->columnSpanFull(),
@@ -218,5 +280,27 @@ class SalesInvoiceForm
                 ->rows(3)
                 ->columnSpanFull(),
         ]);
+    }
+
+    private static function subtotal(Get $get): float
+    {
+        return (float) collect($get('items') ?? [])->sum(
+            fn (array $item): float => (float) ($item['quantity'] ?? 0) * (float) ($item['unit_price'] ?? 0),
+        );
+    }
+
+    /** @return array{taxable_amount: float, tax_amount: float, total: float} */
+    private static function calculation(Get $get): array
+    {
+        return app(DocumentTaxCalculator::class)->calculate(
+            self::subtotal($get),
+            (float) $get('discount_amount'),
+            TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None,
+        );
+    }
+
+    private static function money(float $amount): string
+    {
+        return number_format($amount, 2).' ج.م';
     }
 }

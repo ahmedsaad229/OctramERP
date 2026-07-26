@@ -22,11 +22,11 @@ class ReceiptVoucherResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'document_number';
 
-    protected static ?string $navigationLabel = 'سندات القبض';
+    protected static ?string $navigationLabel = 'سندات قبض العملاء';
 
-    protected static ?string $modelLabel = 'سند قبض';
+    protected static ?string $modelLabel = 'سند قبض عميل';
 
-    protected static ?string $pluralModelLabel = 'سندات القبض';
+    protected static ?string $pluralModelLabel = 'سندات قبض العملاء';
 
     protected static string|\UnitEnum|null $navigationGroup = 'الحسابات المالية';
 

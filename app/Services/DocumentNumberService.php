@@ -9,17 +9,33 @@ use InvalidArgumentException;
 class DocumentNumberService
 {
     public const PURCHASE_INVOICE = 'purchase_invoice';
+
+    public const PURCHASE_REQUEST = 'purchase_request';
+
+    public const SUPPLIER_PURCHASE_ORDER = 'supplier_purchase_order';
+
     public const SALES_INVOICE = 'sales_invoice';
+
+    public const SALES_QUOTATION = 'sales_quotation';
+
     public const GOODS_RECEIPT = 'goods_receipt';
+
     public const GOODS_ISSUE = 'goods_issue';
+
     public const OPENING_STOCK = 'opening_stock';
+
     public const PAYMENT_VOUCHER = 'payment_voucher';
+
     public const RECEIPT_VOUCHER = 'receipt_voucher';
+
     public const TREASURY = 'treasury';
 
     private const PREFIXES = [
         self::PURCHASE_INVOICE => 'PUR',
+        self::PURCHASE_REQUEST => 'PR',
+        self::SUPPLIER_PURCHASE_ORDER => 'PO',
         self::SALES_INVOICE => 'SAL',
+        self::SALES_QUOTATION => 'QUO',
         self::GOODS_RECEIPT => 'GRN',
         self::GOODS_ISSUE => 'GIS',
         self::OPENING_STOCK => 'OPN',
@@ -54,7 +70,7 @@ class DocumentNumberService
                     'updated_at' => now(),
                 ]);
 
-            return $prefix . '-' . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
+            return $prefix.'-'.str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
         });
     }
 

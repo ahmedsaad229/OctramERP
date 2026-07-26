@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\OpeningStockVouchers\Schemas;
 
-use App\Models\Warehouse;
+use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 
@@ -17,8 +18,7 @@ class OpeningStockVoucherForm
         Schema $schema,
         array $headerComponents = [],
         string $dateField = 'voucher_date',
-    ): Schema
-    {
+    ): Schema {
         return $schema
             ->components([
 
@@ -64,16 +64,34 @@ class OpeningStockVoucherForm
                                     ->preload()
                                     ->required(),
 
-                                \Filament\Forms\Components\TextInput::make('quantity')
+                                TextInput::make('quantity')
                                     ->label('الكمية')
-                                    ->numeric()
+                                    ->type('text')
+                                    ->formatStateUsing(fn (mixed $state): ?string => QuantityFormatter::normalizeForInput($state))
+                                    ->mutateStateForValidationUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->dehydrateStateUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->inputMode('decimal')
+                                    ->rules(['numeric', 'gt:0'])
+                                    ->afterStateUpdated(fn (TextInput $component, mixed $state) => $component->state(
+                                        QuantityFormatter::normalizeForInput($state) ?? $state,
+                                    ))
+                                    ->extraInputAttributes(QuantityFormatter::inputAttributes())
                                     ->default(1)
                                     ->required()
                                     ->live(),
 
-                                \Filament\Forms\Components\TextInput::make('unit_cost')
+                                TextInput::make('unit_cost')
                                     ->label('تكلفة الوحدة')
-                                    ->numeric()
+                                    ->type('text')
+                                    ->formatStateUsing(fn (mixed $state): ?string => QuantityFormatter::normalizeForInput($state))
+                                    ->mutateStateForValidationUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->dehydrateStateUsing(fn (mixed $state): mixed => QuantityFormatter::normalizeForInput($state) ?? $state)
+                                    ->inputMode('decimal')
+                                    ->rules(['numeric', 'gte:0'])
+                                    ->afterStateUpdated(fn (TextInput $component, mixed $state) => $component->state(
+                                        QuantityFormatter::normalizeForInput($state) ?? $state,
+                                    ))
+                                    ->extraInputAttributes(QuantityFormatter::inputAttributes())
                                     ->default(0)
                                     ->required()
                                     ->live(),
