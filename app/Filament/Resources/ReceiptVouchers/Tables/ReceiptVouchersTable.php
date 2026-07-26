@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ReceiptVouchers\Tables;
 
+use App\Enums\PaymentMethod;
 use App\Models\ReceiptVoucher;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -47,6 +49,10 @@ class ReceiptVouchersTable
                     ->label('الخزينة')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('payment_method')
+                    ->label('طريقة الدفع')
+                    ->formatStateUsing(fn (PaymentMethod $state): string => $state->label())
+                    ->badge(),
                 TextColumn::make('previously_paid_before_receipt')
                     ->label('المسدد قبل هذا السند')
                     ->state(fn (ReceiptVoucher $record): float => $record
@@ -65,6 +71,11 @@ class ReceiptVouchersTable
                     ->label('البيان')
                     ->limit(40)
                     ->toggleable(),
+            ])
+            ->filters([
+                SelectFilter::make('payment_method')
+                    ->label('طريقة الدفع')
+                    ->options(PaymentMethod::options()),
             ])
             ->recordActions([
                 EditAction::make(),

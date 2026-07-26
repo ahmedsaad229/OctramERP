@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PaymentMethod;
 use App\Filament\Resources\ReceiptVouchers\Pages\CreateReceiptVoucher;
 use App\Filament\Resources\ReceiptVouchers\Pages\ListReceiptVouchers;
 use App\Models\Category;
@@ -62,6 +63,7 @@ class ReceiptVoucherSummaryTest extends TestCase
         ]);
 
         $component = Livewire::test(CreateReceiptVoucher::class)
+            ->assertSet('data.payment_method', PaymentMethod::Cash->value)
             ->set('data.customer_id', $customer->getKey())
             ->set('data.treasury_id', $treasury->getKey())
             ->set('data.date', '2026-07-25');
@@ -93,6 +95,7 @@ class ReceiptVoucherSummaryTest extends TestCase
         ]);
 
         $firstReceipt = ReceiptVoucher::query()->firstOrFail();
+        $this->assertSame(PaymentMethod::Cash, $firstReceipt->payment_method);
         $this->assertSame(0.0, $invoice->previouslyPaidBeforeReceipt($firstReceipt));
         $this->assertSame(1000.0, $invoice->remainingBeforeReceipt($firstReceipt));
 
@@ -182,6 +185,11 @@ class ReceiptVoucherSummaryTest extends TestCase
                 750.0,
                 $firstReceipt,
             )
+            ->assertTableColumnFormattedStateSet(
+                'payment_method',
+                'نقدي',
+                $firstReceipt,
+            )
             ->assertTableColumnStateSet(
                 'previously_paid_before_receipt',
                 250.0,
@@ -202,7 +210,15 @@ class ReceiptVoucherSummaryTest extends TestCase
                 'sales_invoice_document_number',
                 '—',
                 $missingAllocationReceipt,
-            );
+            )
+            ->filterTable('payment_method', PaymentMethod::Cash->value)
+            ->assertCanSeeTableRecords([
+                $firstReceipt,
+                $secondReceipt,
+                $thirdReceipt,
+                $sameDayReceipt,
+                $missingAllocationReceipt,
+            ]);
 
         $records = ReceiptVoucher::query()
             ->with([
@@ -366,6 +382,7 @@ class ReceiptVoucherSummaryTest extends TestCase
             $table->unsignedBigInteger('customer_id');
             $table->date('date');
             $table->decimal('amount', 15, 2);
+            $table->string('payment_method', 30)->default('cash');
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->timestamps();

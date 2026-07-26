@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ReceiptVouchers\Schemas;
 
+use App\Enums\PaymentMethod;
 use App\Models\ReceiptVoucher;
 use App\Models\SalesInvoice;
 use Filament\Forms\Components\DatePicker;
@@ -60,6 +61,13 @@ class ReceiptVoucherForm
                         'sales_invoice_id' => null,
                         'amount' => null,
                     ]])),
+
+                Select::make('payment_method')
+                    ->label('طريقة الدفع')
+                    ->options(PaymentMethod::options())
+                    ->default(PaymentMethod::Cash->value)
+                    ->required()
+                    ->native(false),
             ]),
 
             Repeater::make('allocations')
@@ -159,8 +167,7 @@ class ReceiptVoucherForm
     private static function invoiceOptions(
         int $customerId,
         ?int $excludingReceiptVoucherId,
-    ): array
-    {
+    ): array {
         if ($customerId <= 0) {
             return [];
         }
@@ -177,10 +184,10 @@ class ReceiptVoucherForm
             ) > 0)
             ->mapWithKeys(fn (SalesInvoice $invoice): array => [
                 (int) $invoice->getKey() => $invoice->electronic_invoice_number
-                    . ' — '
-                    . $invoice->document_number
-                    . ' — المتبقي: '
-                    . self::formatAmount($invoice->remainingAmount($excludingReceiptVoucherId)),
+                    .' — '
+                    .$invoice->document_number
+                    .' — المتبقي: '
+                    .self::formatAmount($invoice->remainingAmount($excludingReceiptVoucherId)),
             ])
             ->all();
     }

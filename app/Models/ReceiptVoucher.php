@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,6 +14,7 @@ class ReceiptVoucher extends BaseModel
         'customer_id',
         'date',
         'amount',
+        'payment_method',
         'notes',
         'created_by',
     ];
@@ -20,6 +22,7 @@ class ReceiptVoucher extends BaseModel
     protected $casts = [
         'date' => 'date',
         'amount' => 'decimal:2',
+        'payment_method' => PaymentMethod::class,
     ];
 
     public function treasury(): BelongsTo
