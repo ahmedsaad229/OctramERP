@@ -17,6 +17,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class DueObligationsTable
 {
@@ -56,6 +57,7 @@ class DueObligationsTable
                     ->label('العميل / المورد')
                     ->searchable()
                     ->wrap()
+                    ->width('18rem')
                     ->alignRight(),
                 TextColumn::make('invoice_date')
                     ->label('التاريخ')
@@ -76,11 +78,12 @@ class DueObligationsTable
                 TextColumn::make('due_date')
                     ->label('تاريخ الاستحقاق')
                     ->date('Y/m/d')
-                    ->placeholder('—')
+                    ->placeholder(self::mutedDash())
                     ->alignCenter(),
                 TextColumn::make('days')
                     ->label('عدد الأيام')
                     ->state(fn (DueObligation $record): string => self::daysLabel($record))
+                    ->color(fn (DueObligation $record): ?string => $record->payment_type === PaymentType::Cash->value ? 'gray' : null)
                     ->toggleable()
                     ->alignCenter(),
                 TextColumn::make('due_status')
@@ -91,6 +94,7 @@ class DueObligationsTable
                     ->alignCenter(),
             ])
             ->filters(self::filters())
+            ->recordClasses(fn (DueObligation $record): string => self::rowClass($record))
             ->emptyStateHeading('لا توجد استحقاقات')
             ->emptyStateDescription('لا توجد فواتير مطابقة للبحث أو عوامل التصفية الحالية.')
             ->emptyStateIcon('heroicon-o-calendar-days')
@@ -138,6 +142,21 @@ class DueObligationsTable
         }
 
         return "{$days} يوم";
+    }
+
+    private static function rowClass(DueObligation $record): string
+    {
+        return match (self::status($record)) {
+            DueObligation::STATUS_OVERDUE => 'due-obligation-row-overdue',
+            DueObligation::STATUS_TODAY => 'due-obligation-row-today',
+            DueObligation::STATUS_CASH => 'due-obligation-row-cash',
+            default => '',
+        };
+    }
+
+    private static function mutedDash(): HtmlString
+    {
+        return new HtmlString('<span style="color: rgb(156 163 175)">—</span>');
     }
 
     private static function status(DueObligation $record): string

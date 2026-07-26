@@ -6,6 +6,7 @@ use App\Filament\Resources\DueObligations\Pages\ListDueObligations;
 use App\Filament\Resources\DueObligations\Widgets\DueObligationStats;
 use App\Models\DueObligation;
 use App\Models\User;
+use App\Support\ArabicInvoiceCount;
 use App\Support\ArabicMoney;
 use App\Support\DueObligationSummary;
 use Illuminate\Database\Schema\Blueprint;
@@ -43,25 +44,50 @@ class DueObligationsTest extends TestCase
         $this->assertArabicPresentation();
         $this->assertDefaultSorting();
         $this->assertViewOnlyActions();
+        $this->assertNoOverdueBanner();
     }
 
     private function assertSummaryTotals(): void
     {
         $this->assertSame([
             'customer_due' => 450.0,
+            'customer_due_count' => 3,
             'supplier_due' => 700.0,
+            'supplier_due_count' => 3,
             'due_today' => 350.0,
+            'due_today_count' => 2,
             'overdue' => 300.0,
+            'overdue_count' => 2,
         ], DueObligationSummary::totals());
 
         $this->assertSame('0.00 ج.م', ArabicMoney::format(0));
         $this->assertSame('30,000.00 ج.م', ArabicMoney::format(30000));
 
         Livewire::test(DueObligationStats::class)
-            ->assertSee('الفواتير الآجلة فقط')
-            ->assertSee('450.00 ج.م')
-            ->assertSee('700.00 ج.م')
+            ->assertSee('3 فواتير آجلة')
+            ->assertSee('فاتورتان مستحقتان اليوم')
+            ->assertSee('فاتورتان متأخرتان')
+            ->assertSee('يوجد فاتورتان متأخرتان بإجمالي 300.00 ج.م')
+            ->assertSee('450.00')
+            ->assertSee('700.00')
+            ->assertSee('ج.م')
             ->assertDontSee('EGP');
+
+        $this->assertSame('لا توجد فواتير آجلة', ArabicInvoiceCount::credit(0));
+        $this->assertSame('فاتورة آجلة واحدة', ArabicInvoiceCount::credit(1));
+        $this->assertSame('فاتورتان آجلتان', ArabicInvoiceCount::credit(2));
+        $this->assertSame('8 فواتير آجلة', ArabicInvoiceCount::credit(8));
+        $this->assertSame('11 فاتورة آجلة', ArabicInvoiceCount::credit(11));
+        $this->assertSame('لا توجد فواتير مستحقة اليوم', ArabicInvoiceCount::dueToday(0));
+        $this->assertSame('فاتورة واحدة مستحقة اليوم', ArabicInvoiceCount::dueToday(1));
+        $this->assertSame('فاتورتان مستحقتان اليوم', ArabicInvoiceCount::dueToday(2));
+        $this->assertSame('5 فواتير مستحقة اليوم', ArabicInvoiceCount::dueToday(5));
+        $this->assertSame('12 فاتورة مستحقة اليوم', ArabicInvoiceCount::dueToday(12));
+        $this->assertSame('لا توجد فواتير متأخرة', ArabicInvoiceCount::overdue(0));
+        $this->assertSame('فاتورة متأخرة واحدة', ArabicInvoiceCount::overdue(1));
+        $this->assertSame('فاتورتان متأخرتان', ArabicInvoiceCount::overdue(2));
+        $this->assertSame('7 فواتير متأخرة', ArabicInvoiceCount::overdue(7));
+        $this->assertSame('15 فاتورة متأخرة', ArabicInvoiceCount::overdue(15));
     }
 
     private function assertDueStatusFilters(): void
@@ -175,6 +201,16 @@ class DueObligationsTest extends TestCase
             ->assertTableActionVisible('view_invoice', $records['purchase:1'])
             ->assertTableActionDoesNotExist('edit', null, $records['sale:1'])
             ->assertTableActionDoesNotExist('delete', null, $records['sale:1']);
+    }
+
+    private function assertNoOverdueBanner(): void
+    {
+        DB::table('sales_invoices')->where('id', 1)->update(['due_date' => '2026-08-20']);
+        DB::table('purchase_invoices')->where('id', 1)->update(['due_date' => '2026-08-21']);
+
+        Livewire::test(DueObligationStats::class)
+            ->assertSee('لا توجد استحقاقات متأخرة.')
+            ->assertSee('لا توجد فواتير متأخرة');
     }
 
     /**
