@@ -1,4 +1,10 @@
 <style>
+    .octram-centered-entry > .fi-in-entry-label-col,
+    .octram-centered-entry .fi-in-entry-label-ctn,
+    .octram-centered-entry .fi-in-entry-label,
+    .octram-centered-entry > .fi-in-entry-content-col,
+    .octram-centered-entry .fi-in-entry-content-ctn,
+    .octram-centered-entry .fi-in-entry-content,
     .octram-quotation-centered-entry > .fi-in-entry-label-col,
     .octram-quotation-centered-entry .fi-in-entry-label-ctn,
     .octram-quotation-centered-entry .fi-in-entry-label,
@@ -8,6 +14,10 @@
         width: 100%;
     }
 
+    .octram-centered-entry,
+    .octram-centered-entry > .fi-in-entry-content-col,
+    .octram-centered-entry .fi-in-entry-content-ctn,
+    .octram-centered-entry .fi-in-entry-content,
     .octram-quotation-centered-entry,
     .octram-quotation-centered-entry > .fi-in-entry-content-col,
     .octram-quotation-centered-entry .fi-in-entry-content-ctn,
@@ -16,15 +26,19 @@
         overflow: visible;
     }
 
+    .octram-centered-entry .fi-in-entry-label-ctn,
     .octram-quotation-centered-entry .fi-in-entry-label-ctn {
         justify-content: center;
     }
 
+    .octram-centered-entry .fi-in-entry-label,
     .octram-quotation-centered-entry .fi-in-entry-label {
         direction: rtl;
         text-align: center;
     }
 
+    .octram-readonly-box,
+    .octram-summary-box,
     .octram-quotation-readonly-box,
     .octram-quotation-summary-box {
         box-sizing: border-box;
@@ -43,12 +57,18 @@
         line-height: 1.25;
     }
 
+    .octram-item-code-box,
+    .octram-money-box,
+    .octram-stock-box,
     .octram-quotation-item-code-box,
     .octram-quotation-money-box,
     .octram-quotation-stock-box {
         white-space: nowrap;
     }
 
+    .octram-item-code-box,
+    .octram-money-box,
+    .octram-stock-box,
     .octram-quotation-item-code-box,
     .octram-quotation-money-box,
     .octram-quotation-stock-box {
@@ -56,6 +76,7 @@
         unicode-bidi: isolate;
     }
 
+    .octram-item-code-box,
     .octram-quotation-item-code-box {
         overflow-wrap: normal;
         font-weight: 600;
@@ -63,6 +84,7 @@
         word-break: normal;
     }
 
+    .octram-unit-box,
     .octram-quotation-unit-box {
         overflow-wrap: normal;
         word-break: normal;
@@ -84,6 +106,8 @@
     }
 
     @media (prefers-color-scheme: dark) {
+        .octram-readonly-box,
+        .octram-summary-box,
         .octram-quotation-readonly-box,
         .octram-quotation-summary-box {
             border-color: rgb(255 255 255 / 10%);

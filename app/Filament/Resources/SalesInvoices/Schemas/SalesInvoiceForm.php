@@ -10,6 +10,7 @@ use App\Services\CompanyTaxSetting;
 use App\Services\DocumentTaxCalculator;
 use App\Services\Inventory\InventoryService;
 use App\Services\SalesQuotationConversionService;
+use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -208,7 +209,9 @@ class SalesInvoiceForm
                                             $record?->getKey(),
                                         ),
                                     ))
-                                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 3,
@@ -239,10 +242,12 @@ class SalesInvoiceForm
 
                                 Placeholder::make('line_total_display')
                                     ->label('الإجمالي')
-                                    ->content(fn (Get $get): string => number_format(
+                                    ->content(fn (Get $get): string => self::money(
                                         (float) $get('quantity') * (float) $get('unit_price'),
-                                        2,
                                     ))
+                                    ->extraAttributes(DocumentFieldPresentation::money())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 3,
@@ -262,14 +267,26 @@ class SalesInvoiceForm
 
                     Grid::make(['default' => 1, 'md' => 5])->schema([
                         Placeholder::make('invoice_subtotal')->label('الإجمالي الفرعي')
-                            ->content(fn (Get $get): string => self::money(self::subtotal($get))),
+                            ->content(fn (Get $get): string => self::money(self::subtotal($get)))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         TextInput::make('discount_amount')->label('الخصم')->numeric()->minValue(0)->default(0)->live(),
                         Placeholder::make('invoice_taxable')->label('صافي قبل الضريبة')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         Placeholder::make('invoice_tax')->label('الضريبة')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         Placeholder::make('invoice_total')->label('الإجمالي النهائي')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['total'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['total']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                     ])->columnSpanFull(),
                 ])
                 ->columns(1)

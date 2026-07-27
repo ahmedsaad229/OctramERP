@@ -10,6 +10,7 @@ use App\Services\CompanyTaxSetting;
 use App\Services\DocumentTaxCalculator;
 use App\Services\Inventory\InventoryService;
 use App\Services\Inventory\PurchaseInvoiceService;
+use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -175,28 +176,40 @@ class PurchaseInvoiceForm
 
                                 Placeholder::make('item_code_display')
                                     ->label('كود الصنف')
-                                    ->content(fn (Get $get): string => $get('item_code') ?: '—'),
+                                    ->content(fn (Get $get): string => $get('item_code') ?: '—')
+                                    ->extraAttributes(DocumentFieldPresentation::itemCode())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter(),
 
                                 Placeholder::make('unit_name_display')
                                     ->label('الوحدة')
-                                    ->content(fn (Get $get): string => $get('unit_name') ?: '—'),
+                                    ->content(fn (Get $get): string => $get('unit_name') ?: '—')
+                                    ->extraAttributes(DocumentFieldPresentation::unit())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter(),
 
                                 Placeholder::make('ordered_quantity_display')
                                     ->label('الكمية بأمر التوريد')
                                     ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('ordered_quantity')))
-                                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
 
                                 Placeholder::make('previously_invoiced_quantity_display')
                                     ->label('الكمية المفوترة سابقًا')
                                     ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('previously_invoiced_quantity')))
-                                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
 
                                 Placeholder::make('remaining_quantity_display')
                                     ->label('المتبقي قبل هذه الفاتورة')
                                     ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('remaining_quantity')))
-                                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
 
                                 Placeholder::make('warehouse_balance')
@@ -207,7 +220,9 @@ class PurchaseInvoiceForm
                                             $get('item_id'),
                                         ),
                                     ))
-                                    ->extraAttributes(QuantityFormatter::displayAttributes())
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
 
                                 TextInput::make('quantity')
@@ -261,10 +276,12 @@ class PurchaseInvoiceForm
 
                                 Placeholder::make('total')
                                     ->label('الإجمالي')
-                                    ->content(fn (Get $get): string => number_format(
+                                    ->content(fn (Get $get): string => self::money(
                                         (float) $get('quantity') * (float) $get('unit_cost'),
-                                        2,
                                     ))
+                                    ->extraAttributes(DocumentFieldPresentation::money())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->columnSpan([
                                         'default' => 1,
                                         'md' => 3,
@@ -285,14 +302,26 @@ class PurchaseInvoiceForm
 
                     Grid::make(['default' => 1, 'md' => 5])->schema([
                         Placeholder::make('invoice_subtotal')->label('الإجمالي الفرعي')
-                            ->content(fn (Get $get): string => self::money(self::subtotal($get))),
+                            ->content(fn (Get $get): string => self::money(self::subtotal($get)))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         TextInput::make('discount_amount')->label('الخصم')->numeric()->minValue(0)->default(0)->live(),
                         Placeholder::make('invoice_taxable')->label('صافي قبل الضريبة')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         Placeholder::make('invoice_tax')->label('الضريبة')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                         Placeholder::make('invoice_total')->label('الإجمالي النهائي')
-                            ->content(fn (Get $get): string => self::money(self::calculation($get)['total'])),
+                            ->content(fn (Get $get): string => self::money(self::calculation($get)['total']))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
                     ])->columnSpanFull(),
                 ])
                 ->columns(1)

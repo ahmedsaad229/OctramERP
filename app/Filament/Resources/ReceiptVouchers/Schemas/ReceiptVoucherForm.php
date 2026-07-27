@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ReceiptVouchers\Schemas;
 use App\Enums\PaymentMethod;
 use App\Models\ReceiptVoucher;
 use App\Models\SalesInvoice;
+use App\Support\DocumentFieldPresentation;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -95,14 +96,20 @@ class ReceiptVoucherForm
                             ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::invoiceSummary(
                                 self::selectedInvoiceId($get),
                                 $record?->getKey(),
-                            )['invoice_code'] ?? '—'),
+                            )['invoice_code'] ?? '—')
+                            ->extraAttributes(DocumentFieldPresentation::itemCode())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
 
                         Placeholder::make('invoice_date_display')
                             ->label('تاريخ الفاتورة')
                             ->content(fn (Get $get, ?ReceiptVoucher $record): string => self::invoiceSummary(
                                 self::selectedInvoiceId($get),
                                 $record?->getKey(),
-                            )['invoice_date'] ?? '—'),
+                            )['invoice_date'] ?? '—')
+                            ->extraAttributes(DocumentFieldPresentation::value(true))
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
 
                         Placeholder::make('invoice_total_display')
                             ->label('إجمالي الفاتورة')
@@ -111,7 +118,10 @@ class ReceiptVoucherForm
                                     self::selectedInvoiceId($get),
                                     $record?->getKey(),
                                 )['invoice_total'],
-                            )),
+                            ))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
 
                         Placeholder::make('previously_paid_display')
                             ->label('المحصل سابقاً')
@@ -120,7 +130,10 @@ class ReceiptVoucherForm
                                     self::selectedInvoiceId($get),
                                     $record?->getKey(),
                                 )['previously_paid'],
-                            )),
+                            ))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
 
                         Placeholder::make('remaining_before_receipt_display')
                             ->label('المتبقي قبل هذا السند')
@@ -129,7 +142,10 @@ class ReceiptVoucherForm
                                     self::selectedInvoiceId($get),
                                     $record?->getKey(),
                                 )['remaining_before_receipt'],
-                            )),
+                            ))
+                            ->extraAttributes(DocumentFieldPresentation::money())
+                            ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                            ->alignCenter(),
 
                         TextInput::make('amount')
                             ->label('المبلغ المحصل الآن')
@@ -152,7 +168,10 @@ class ReceiptVoucherForm
                     collect($get('allocations') ?? [])->sum(
                         fn (array $allocation): float => (float) ($allocation['amount'] ?? 0),
                     ),
-                )),
+                ))
+                ->extraAttributes(DocumentFieldPresentation::money())
+                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                ->alignCenter(),
 
             Textarea::make('notes')
                 ->label('البيان')
@@ -230,6 +249,6 @@ class ReceiptVoucherForm
 
     private static function formatAmount(mixed $amount): string
     {
-        return number_format((float) ($amount ?? 0), 2);
+        return number_format((float) ($amount ?? 0), 2).' ج.م';
     }
 }

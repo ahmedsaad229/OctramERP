@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CustomerStatementPrintController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SalesQuotationPrintController;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/admin/customer-statement/print', CustomerStatementPrintController::class)
+        ->name('customer-statement.print');
     Route::get('/admin/sales-quotations/{salesQuotation}/print', SalesQuotationPrintController::class)
         ->name('sales-quotations.print');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

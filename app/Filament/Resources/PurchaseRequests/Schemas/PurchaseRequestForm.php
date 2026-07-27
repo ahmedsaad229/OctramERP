@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PurchaseRequests\Schemas;
 
 use App\Models\Item;
 use App\Services\Inventory\InventoryService;
+use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -172,6 +173,9 @@ class PurchaseRequestForm
                                 Placeholder::make('item_code')
                                     ->label('كود الصنف')
                                     ->content(fn (Get $get): string => Item::query()->find($get('item_id'))?->code ?? '—')
+                                    ->extraAttributes(DocumentFieldPresentation::itemCode())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->columnSpan(['xl' => 1]),
                                 Hidden::make('unit_id')
                                     ->dehydrated()
@@ -179,11 +183,13 @@ class PurchaseRequestForm
                                     ->validationMessages([
                                         'required' => 'يجب تحديد وحدة الصنف.',
                                     ]),
-                                TextInput::make('unit_name')
+                                Hidden::make('unit_name')->dehydrated(false),
+                                Placeholder::make('unit_name_display')
                                     ->label('الوحدة')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->placeholder('—')
+                                    ->content(fn (Get $get): string => $get('unit_name') ?: '—')
+                                    ->extraAttributes(DocumentFieldPresentation::unit())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                    ->alignCenter()
                                     ->columnSpan(['xl' => 1]),
                                 Placeholder::make('unit_validation')
                                     ->label('')
@@ -215,14 +221,8 @@ class PurchaseRequestForm
                                         $get('../../warehouse_id'),
                                         $get('item_id'),
                                     )))
-                                    ->extraAttributes([
-                                        'dir' => 'ltr',
-                                        'lang' => 'en',
-                                        'style' => 'display: flex; width: 100%; min-height: 2.25rem; align-items: center; justify-content: center; text-align: center; unicode-bidi: plaintext;',
-                                    ])
-                                    ->extraEntryWrapperAttributes([
-                                        'class' => 'octram-centered-balance-entry',
-                                    ])
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
                                     ->columnSpan(['xl' => 2]),
                                 Placeholder::make('total_balance')
@@ -230,14 +230,8 @@ class PurchaseRequestForm
                                     ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay(
                                         app(InventoryService::class)->totalBalance($get('item_id')),
                                     ))
-                                    ->extraAttributes([
-                                        'dir' => 'ltr',
-                                        'lang' => 'en',
-                                        'style' => 'display: flex; width: 100%; min-height: 2.25rem; align-items: center; justify-content: center; text-align: center; unicode-bidi: plaintext;',
-                                    ])
-                                    ->extraEntryWrapperAttributes([
-                                        'class' => 'octram-centered-balance-entry',
-                                    ])
+                                    ->extraAttributes(DocumentFieldPresentation::stock())
+                                    ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
                                     ->columnSpan(['xl' => 2]),
                                 Placeholder::make('stock_warning')

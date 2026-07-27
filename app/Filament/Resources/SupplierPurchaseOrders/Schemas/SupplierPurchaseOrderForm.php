@@ -8,6 +8,7 @@ use App\Models\SupplierPurchaseOrder;
 use App\Services\CompanyTaxSetting;
 use App\Services\DocumentTaxCalculator;
 use App\Services\SupplierPurchaseOrderService;
+use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -142,29 +143,44 @@ class SupplierPurchaseOrderForm
                             Placeholder::make('item_name_display')
                                 ->label('الصنف')
                                 ->content(fn (Get $get): string => $get('item_name') ?: '—')
+                                ->extraAttributes(DocumentFieldPresentation::value())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['md' => 2, 'xl' => 4]),
                             Placeholder::make('item_code_display')
                                 ->label('كود الصنف')
                                 ->content(fn (Get $get): string => $get('item_code') ?: '—')
+                                ->extraAttributes(DocumentFieldPresentation::itemCode())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('unit_name_display')
                                 ->label('الوحدة')
                                 ->content(fn (Get $get): string => $get('unit_name') ?: '—')
+                                ->extraAttributes(DocumentFieldPresentation::unit())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('requested_quantity_display')
                                 ->label('الكمية بطلب الشراء')
                                 ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('requested_quantity')))
-                                ->extraAttributes(QuantityFormatter::displayAttributes())
+                                ->extraAttributes(DocumentFieldPresentation::stock())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('previously_ordered_quantity_display')
                                 ->label('سبق إصدار أوامر بها')
                                 ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('previously_ordered_quantity')))
-                                ->extraAttributes(QuantityFormatter::displayAttributes())
+                                ->extraAttributes(DocumentFieldPresentation::stock())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('remaining_quantity_display')
                                 ->label('المتبقي قبل هذا الأمر')
                                 ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('remaining_quantity')))
-                                ->extraAttributes(QuantityFormatter::displayAttributes())
+                                ->extraAttributes(DocumentFieldPresentation::stock())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             TextInput::make('ordered_quantity')
                                 ->label('كمية أمر التوريد')
@@ -185,12 +201,16 @@ class SupplierPurchaseOrderForm
                             Placeholder::make('warehouse_balance_display')
                                 ->label('رصيد المخزن')
                                 ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('warehouse_balance')))
-                                ->extraAttributes(QuantityFormatter::displayAttributes())
+                                ->extraAttributes(DocumentFieldPresentation::stock())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('total_balance_display')
                                 ->label('إجمالي الرصيد بالمخازن')
                                 ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay($get('total_balance')))
-                                ->extraAttributes(QuantityFormatter::displayAttributes())
+                                ->extraAttributes(DocumentFieldPresentation::stock())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             TextInput::make('unit_price')
                                 ->label('سعر الوحدة')
@@ -211,10 +231,12 @@ class SupplierPurchaseOrderForm
                                 ->columnSpan(['xl' => 2]),
                             Placeholder::make('line_total')
                                 ->label('الإجمالي')
-                                ->content(fn (Get $get): string => number_format(
+                                ->content(fn (Get $get): string => self::money(
                                     (float) $get('ordered_quantity') * (float) $get('unit_price'),
-                                    2,
                                 ))
+                                ->extraAttributes(DocumentFieldPresentation::money())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter()
                                 ->columnSpan(['xl' => 2]),
                             TextInput::make('notes')->label('ملاحظات')->columnSpan(['md' => 2, 'xl' => 8]),
                         ])->columnSpanFull(),
@@ -229,7 +251,10 @@ class SupplierPurchaseOrderForm
                 Grid::make(['default' => 1, 'md' => 3])->schema([
                     Placeholder::make('calculated_subtotal')
                         ->label('الإجمالي الفرعي')
-                        ->content(fn (Get $get): string => self::money(self::subtotal($get('items') ?? []))),
+                        ->content(fn (Get $get): string => self::money(self::subtotal($get('items') ?? [])))
+                        ->extraAttributes(DocumentFieldPresentation::money())
+                        ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                        ->alignCenter(),
                     TextInput::make('discount_amount')
                         ->label('الخصم')
                         ->numeric()
@@ -247,13 +272,22 @@ class SupplierPurchaseOrderForm
                         ->live(),
                     Placeholder::make('calculated_taxable')
                         ->label('صافي قبل الضريبة')
-                        ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount'])),
+                        ->content(fn (Get $get): string => self::money(self::calculation($get)['taxable_amount']))
+                        ->extraAttributes(DocumentFieldPresentation::money())
+                        ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                        ->alignCenter(),
                     Placeholder::make('calculated_tax')
                         ->label('الضريبة')
-                        ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount'])),
+                        ->content(fn (Get $get): string => self::money(self::calculation($get)['tax_amount']))
+                        ->extraAttributes(DocumentFieldPresentation::money())
+                        ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                        ->alignCenter(),
                     Placeholder::make('calculated_total')
                         ->label('الإجمالي النهائي')
-                        ->content(fn (Get $get): string => self::money(self::calculation($get)['total'])),
+                        ->content(fn (Get $get): string => self::money(self::calculation($get)['total']))
+                        ->extraAttributes(DocumentFieldPresentation::money())
+                        ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                        ->alignCenter(),
                 ]),
             ]),
             Section::make('البيان والملاحظات')->schema([

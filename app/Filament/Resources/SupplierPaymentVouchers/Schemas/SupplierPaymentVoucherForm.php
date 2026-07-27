@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Models\PurchaseInvoice;
 use App\Models\SupplierPaymentVoucher;
 use App\Support\ArabicMoney;
+use App\Support\DocumentFieldPresentation;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -103,20 +104,32 @@ class SupplierPaymentVoucherForm
                                 ->label('إجمالي الفاتورة')
                                 ->content(fn (Get $get, ?SupplierPaymentVoucher $record): string => ArabicMoney::format(
                                     self::invoiceSummaryFromForm($get, $record)['invoice_total'],
-                                )),
+                                ))
+                                ->extraAttributes(DocumentFieldPresentation::money())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter(),
                             Placeholder::make('previously_paid_display')
                                 ->label('المدفوع سابقًا')
                                 ->content(fn (Get $get, ?SupplierPaymentVoucher $record): string => ArabicMoney::format(
                                     self::invoiceSummaryFromForm($get, $record)['previously_paid'],
-                                )),
+                                ))
+                                ->extraAttributes(DocumentFieldPresentation::money())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter(),
                             Placeholder::make('current_payment_display')
                                 ->label('الدفعة الحالية')
-                                ->content(fn (Get $get): string => ArabicMoney::format($get('amount'))),
+                                ->content(fn (Get $get): string => ArabicMoney::format($get('amount')))
+                                ->extraAttributes(DocumentFieldPresentation::money())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter(),
                             Placeholder::make('remaining_after_payment_display')
                                 ->label('المتبقي بعد الدفع')
                                 ->content(fn (Get $get, ?SupplierPaymentVoucher $record): string => ArabicMoney::format(
                                     self::invoiceSummaryFromForm($get, $record)['remaining_after_payment'],
-                                )),
+                                ))
+                                ->extraAttributes(DocumentFieldPresentation::money())
+                                ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
+                                ->alignCenter(),
                         ]),
                     ]),
                 Section::make('البيان')
