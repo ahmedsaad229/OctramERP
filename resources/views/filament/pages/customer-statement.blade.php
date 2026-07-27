@@ -12,7 +12,13 @@
             </x-filament::button>
 
             @if ($printUrl = $this->printUrl())
-                <x-filament::button tag="a" :href="$printUrl" icon="heroicon-o-printer">
+                <x-filament::button
+                    tag="a"
+                    :href="$printUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    icon="heroicon-o-printer"
+                >
                     طباعة كشف الحساب
                 </x-filament::button>
             @endif

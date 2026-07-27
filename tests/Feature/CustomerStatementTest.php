@@ -168,7 +168,10 @@ class CustomerStatementTest extends TestCase
             ->assertSee('عميل كشف الحساب')
             ->assertSee('MISSING-001')
             ->assertSee('250.00 ج.م')
-            ->assertSee('على العميل');
+            ->assertSee('على العميل')
+            ->assertSeeHtml('target="_blank"')
+            ->assertSeeHtml('rel="noopener noreferrer"')
+            ->assertSeeHtml(route('customer-statement.print', ['customer' => $this->customer->id]));
     }
 
     public function test_print_route_is_authenticated_and_contains_clean_a4_statement(): void

@@ -16,13 +16,13 @@ class CustomerStatement extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';
 
-    protected static ?string $navigationLabel = 'كشف حساب عميل';
+    protected static ?string $navigationLabel = 'كشف حساب العملاء';
 
     protected static ?string $title = 'كشف حساب عميل';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'الاستعلامات';
+    protected static string|\UnitEnum|null $navigationGroup = 'المبيعات';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 20;
 
     protected string $view = 'filament.pages.customer-statement';
 
