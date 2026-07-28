@@ -19,6 +19,7 @@ class SupplierPaymentVouchersTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->where('payment_type', SupplierPaymentVoucher::TYPE_SUPPLIER)
                 ->with([
                     'supplier',
                     'treasury',

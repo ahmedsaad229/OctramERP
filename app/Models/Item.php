@@ -24,6 +24,7 @@ class Item extends BaseModel
         'purchase_price',
         'sale_price',
         'minimum_stock',
+        'reorder_level',
         'allow_negative_stock',
         'active',
         'description',
@@ -33,6 +34,7 @@ class Item extends BaseModel
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'minimum_stock' => 'decimal:2',
+        'reorder_level' => 'decimal:2',
         'allow_negative_stock' => 'boolean',
         'active' => 'boolean',
     ];

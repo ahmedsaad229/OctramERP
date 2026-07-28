@@ -27,17 +27,20 @@ class SupplierPaymentVoucherService
     public function create(array $data): SupplierPaymentVoucher
     {
         return DB::transaction(function () use ($data): SupplierPaymentVoucher {
+            $requiresAllocation = array_key_exists('purchase_invoice_id', $data);
             $invoiceId = (int) ($data['purchase_invoice_id'] ?? 0);
             unset($data['purchase_invoice_id'], $data['document_number']);
 
-            $this->validateInput($data, $invoiceId);
+            $data = $this->validateInput($data, $invoiceId, $requiresAllocation);
 
             $data['document_number'] = $this->documentNumberService
                 ->generate(DocumentNumberService::PAYMENT_VOUCHER);
             $data['created_by'] = auth()->id();
 
             $voucher = SupplierPaymentVoucher::create($data);
-            $this->persistAllocation($voucher, $invoiceId);
+            if ($requiresAllocation) {
+                $this->persistAllocation($voucher, $invoiceId);
+            }
             $this->applyFinancialEffect($voucher);
 
             return $voucher->fresh($this->relations());
@@ -56,6 +59,7 @@ class SupplierPaymentVoucherService
                 ->lockForUpdate()
                 ->findOrFail($voucher->getKey());
 
+            $requiresAllocation = array_key_exists('purchase_invoice_id', $data);
             $invoiceId = (int) ($data['purchase_invoice_id'] ?? 0);
             $invoiceIds = [
                 ...$voucher->allocations()->pluck('purchase_invoice_id')->all(),
@@ -76,10 +80,12 @@ class SupplierPaymentVoucherService
                 $data['document_number'],
                 $data['created_by'],
             );
-            $this->validateInput($data, $invoiceId);
+            $data = $this->validateInput($data, $invoiceId, $requiresAllocation);
             $voucher->update($data);
 
-            $this->persistAllocation($voucher, $invoiceId);
+            if ($requiresAllocation) {
+                $this->persistAllocation($voucher, $invoiceId);
+            }
             $this->applyFinancialEffect($voucher);
 
             return $voucher->fresh($this->relations());
@@ -103,8 +109,9 @@ class SupplierPaymentVoucherService
     /**
      * @param  array<string, mixed>  $data
      */
-    private function validateInput(array $data, int $invoiceId): void
+    private function validateInput(array $data, int $invoiceId, bool $requiresAllocation): array
     {
+        $type = (string) ($data['payment_type'] ?? SupplierPaymentVoucher::TYPE_SUPPLIER);
         $supplierId = (int) ($data['supplier_id'] ?? 0);
         $treasuryId = (int) ($data['treasury_id'] ?? 0);
         $amount = (float) ($data['amount'] ?? 0);
@@ -112,10 +119,33 @@ class SupplierPaymentVoucherService
             ? $data['payment_method']
             : PaymentMethod::tryFrom((string) ($data['payment_method'] ?? ''));
 
-        if (! Supplier::query()->whereKey($supplierId)->exists()) {
+        if (! array_key_exists($type, SupplierPaymentVoucher::paymentTypeOptions())) {
+            throw ValidationException::withMessages([
+                'data.payment_type' => 'نوع الصرف غير صحيح.',
+            ]);
+        }
+
+        if ($type === SupplierPaymentVoucher::TYPE_SUPPLIER
+            && ! Supplier::query()->whereKey($supplierId)->exists()) {
             throw ValidationException::withMessages([
                 'data.supplier_id' => 'المورد المحدد غير موجود.',
             ]);
+        }
+
+        if ($type === SupplierPaymentVoucher::TYPE_GENERAL) {
+            $data['supplier_id'] = null;
+
+            if (! array_key_exists(
+                (string) ($data['payment_reason'] ?? ''),
+                SupplierPaymentVoucher::paymentReasonOptions(),
+            )) {
+                throw ValidationException::withMessages([
+                    'data.payment_reason' => 'يجب اختيار سبب الصرف.',
+                ]);
+            }
+        } else {
+            $data['payment_reason'] = null;
+            $data['beneficiary_name'] = null;
         }
 
         if (! Treasury::query()->whereKey($treasuryId)->exists()) {
@@ -145,11 +175,15 @@ class SupplierPaymentVoucherService
             ]);
         }
 
-        if ($invoiceId <= 0) {
+        if ($requiresAllocation && $invoiceId <= 0) {
             throw ValidationException::withMessages([
                 'data.purchase_invoice_id' => 'يجب اختيار فاتورة شراء.',
             ]);
         }
+
+        $data['payment_type'] = $type;
+
+        return $data;
     }
 
     private function persistAllocation(
@@ -206,20 +240,22 @@ class SupplierPaymentVoucherService
             (float) $voucher->amount,
             TreasuryTransaction::DIRECTION_CREDIT,
             $voucher->document_number,
-            "صرف دفعة للمورد {$voucher->supplier->name}",
+            $voucher->notes ?: "صرف نقدية إلى {$voucher->paidToName()}",
             $voucher->created_by,
         );
 
-        $this->partyTransactionService->replaceDocumentTransaction(
-            $voucher->supplier,
-            PartyTransaction::TYPE_SUPPLIER_PAYMENT,
-            $voucher,
-            $voucher->voucher_date,
-            (float) $voucher->amount,
-            0,
-            $voucher->document_number,
-            "سداد دفعة للمورد بموجب سند صرف {$voucher->document_number}",
-        );
+        if ($voucher->isSupplierPayment()) {
+            $this->partyTransactionService->replaceDocumentTransaction(
+                $voucher->supplier,
+                PartyTransaction::TYPE_SUPPLIER_PAYMENT,
+                $voucher,
+                $voucher->voucher_date,
+                (float) $voucher->amount,
+                0,
+                $voucher->document_number,
+                "سداد دفعة للمورد بموجب سند صرف {$voucher->document_number}",
+            );
+        }
     }
 
     private function removeFinancialEffect(SupplierPaymentVoucher $voucher): void

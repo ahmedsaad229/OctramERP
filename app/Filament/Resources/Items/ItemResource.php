@@ -28,7 +28,11 @@ class ItemResource extends Resource
 
     protected static ?string $pluralModelLabel = 'الأصناف';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'إدارة المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
+
+    protected static ?string $navigationParentItem = 'إدارة المخزون';
+
+    protected static ?int $navigationSort = 20;
 
     public static function form(Schema $schema): Schema
     {

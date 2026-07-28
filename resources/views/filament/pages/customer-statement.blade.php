@@ -1,28 +1,9 @@
 <x-filament-panels::page>
+    <div class="octram-report space-y-6" dir="rtl">
     <form wire:submit="runReport" class="space-y-4">
         {{ $this->form }}
 
-        <div class="flex flex-wrap items-center gap-3">
-            <x-filament::button type="submit" icon="heroicon-o-magnifying-glass">
-                عرض الكشف
-            </x-filament::button>
-
-            <x-filament::button type="button" color="gray" icon="heroicon-o-arrow-path" wire:click="resetReport">
-                إعادة تعيين
-            </x-filament::button>
-
-            @if ($printUrl = $this->printUrl())
-                <x-filament::button
-                    tag="a"
-                    :href="$printUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    icon="heroicon-o-printer"
-                >
-                    طباعة كشف الحساب
-                </x-filament::button>
-            @endif
-        </div>
+        <x-reports.actions :excel-url="$this->excelUrl()" :print-url="$this->printUrl()" />
     </form>
 
     @if (! $hasRun)
@@ -94,10 +75,9 @@
                     <p>لا توجد حركات لهذا العميل خلال الفترة المحددة.</p>
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[900px] table-auto text-sm">
+                <x-reports.table min-width="68rem">
                         <thead>
-                            <tr class="border-b border-gray-200 text-right text-gray-500 dark:border-white/10 dark:text-gray-400">
+                            <tr class="text-right text-gray-500 dark:text-gray-400">
                                 <th class="px-3 py-3">التاريخ</th>
                                 <th class="px-3 py-3">نوع المستند</th>
                                 <th class="px-3 py-3">رقم المستند</th>
@@ -109,26 +89,26 @@
                         </thead>
                         <tbody>
                             @foreach ($report['rows'] as $row)
-                                <tr wire:key="customer-statement-row-{{ $row['id'] }}" class="border-b border-gray-100 dark:border-white/5">
-                                    <td class="whitespace-nowrap px-3 py-3" dir="ltr">{{ $row['date'] }}</td>
-                                    <td class="px-3 py-3">{{ $row['typeLabel'] }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 font-medium" dir="ltr">
+                                <tr wire:key="customer-statement-row-{{ $row['id'] }}">
+                                    <td class="octram-report-date">{{ $row['date'] }}</td>
+                                    <td class="octram-report-text">{{ $row['typeLabel'] }}</td>
+                                    <td class="octram-report-code font-medium">
                                         @if ($row['url'])
                                             <a href="{{ $row['url'] }}" class="text-primary-600 hover:underline dark:text-primary-400">{{ $row['reference'] }}</a>
                                         @else
                                             {{ $row['reference'] }}
                                         @endif
                                     </td>
-                                    <td class="max-w-sm px-3 py-3">{{ $row['description'] }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 text-center" dir="ltr">{{ $row['debit'] > 0 ? $money($row['debit']) : '—' }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 text-center" dir="ltr">{{ $row['credit'] > 0 ? $money($row['credit']) : '—' }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 text-center font-semibold" dir="ltr">{{ $money($row['runningBalance']) }}</td>
+                                    <td class="octram-report-text-wide">{{ $row['description'] }}</td>
+                                    <td class="octram-report-number">{{ $row['debit'] > 0 ? $money($row['debit']) : '—' }}</td>
+                                    <td class="octram-report-number">{{ $row['credit'] > 0 ? $money($row['credit']) : '—' }}</td>
+                                    <td class="octram-report-number font-semibold">{{ $money($row['runningBalance']) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
-                    </table>
-                </div>
+                </x-reports.table>
             @endif
         </x-filament::section>
     @endif
+    </div>
 </x-filament-panels::page>

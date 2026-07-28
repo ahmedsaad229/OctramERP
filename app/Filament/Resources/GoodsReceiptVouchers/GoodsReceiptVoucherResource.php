@@ -28,9 +28,11 @@ class GoodsReceiptVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'أذون الاستلام';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'إدارة المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationParentItem = 'عمليات المخزون';
+
+    protected static ?int $navigationSort = 20;
 
     public static function shouldRegisterNavigation(): bool
     {

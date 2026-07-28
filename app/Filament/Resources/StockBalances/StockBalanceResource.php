@@ -22,9 +22,11 @@ class StockBalanceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'أرصدة المخزون';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationParentItem = 'عمليات المخزون';
+
+    protected static ?int $navigationSort = 40;
 
     public static function table(Table $table): Table
     {

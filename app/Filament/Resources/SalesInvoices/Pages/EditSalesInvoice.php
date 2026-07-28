@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesInvoices\Pages;
 use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\SalesInvoice;
+use App\Services\CustomerPurchaseOrderConversionService;
 use App\Services\Inventory\SalesInvoiceService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -23,10 +24,11 @@ class EditSalesInvoice extends EditRecord
     {
         $data['items'] = $this->getRecord()
             ->items()
-            ->get(['item_id', 'sales_quotation_item_id', 'unit_id', 'quantity', 'unit_price', 'discount_amount', 'tax_amount', 'notes'])
+            ->get(['item_id', 'sales_quotation_item_id', 'customer_purchase_order_item_id', 'unit_id', 'quantity', 'unit_price', 'discount_amount', 'tax_amount', 'notes'])
             ->map(fn ($item): array => [
                 'item_id' => $item->item_id,
                 'sales_quotation_item_id' => $item->sales_quotation_item_id,
+                'customer_purchase_order_item_id' => $item->customer_purchase_order_item_id,
                 'unit_id' => $item->unit_id,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
@@ -35,6 +37,11 @@ class EditSalesInvoice extends EditRecord
                 'notes' => $item->notes,
             ])
             ->all();
+        $data['order_import_lines'] = $this->getRecord()->customer_purchase_order_id
+            ? app(CustomerPurchaseOrderConversionService::class)->lines(
+                $this->getRecord()->customer_purchase_order_id,
+                $this->getRecord()->getKey(),
+            ) : [];
 
         return $data;
     }

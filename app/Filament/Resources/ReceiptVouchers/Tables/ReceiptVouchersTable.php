@@ -17,10 +17,12 @@ class ReceiptVouchersTable
         return $table
             ->defaultSort('id', 'desc')
             ->emptyStateHeading('لا توجد سندات قبض عملاء')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'allocations.salesInvoice.items',
-                'allocations.salesInvoice.receiptAllocations.receiptVoucher',
-            ]))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->where('receipt_type', ReceiptVoucher::TYPE_CUSTOMER)
+                ->with([
+                    'allocations.salesInvoice.items',
+                    'allocations.salesInvoice.receiptAllocations.receiptVoucher',
+                ]))
             ->columns([
                 TextColumn::make('document_number')
                     ->label('رقم المستند')

@@ -35,6 +35,10 @@ class SupplierPaymentVoucherTest extends TestCase
             'migrations/2026_07_26_000001_create_supplier_payment_vouchers.php',
         );
         $migration->up();
+        $generalization = require database_path(
+            'migrations/2026_08_01_000002_generalize_supplier_payment_vouchers_for_cash_payments.php',
+        );
+        $generalization->up();
         $this->actingAs(User::factory()->create());
     }
 

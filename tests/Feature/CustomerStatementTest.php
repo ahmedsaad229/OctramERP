@@ -200,6 +200,79 @@ class CustomerStatementTest extends TestCase
             ->assertDontSee('Laravel');
     }
 
+    public function test_excel_export_is_authenticated_filtered_and_contains_statement_totals(): void
+    {
+        $this->invoice('SI-EXPORT-BEFORE', '2026-06-30', 5000);
+        $this->invoice('SI-EXPORT', '2026-07-02', 1500);
+        $this->receipt('RV-EXPORT', '2026-07-03', 500);
+
+        $otherCustomer = Customer::create(['name' => 'عميل آخر', 'active' => true]);
+        PartyTransaction::create([
+            'party_type' => $otherCustomer->getMorphClass(),
+            'party_id' => $otherCustomer->id,
+            'transaction_type' => PartyTransaction::TYPE_CUSTOMER_DEBIT,
+            'reference_no' => 'OTHER-CUSTOMER',
+            'transaction_date' => '2026-07-02',
+            'debit' => 9999,
+            'credit' => 0,
+        ]);
+
+        $url = route('customer-statement.excel', [
+            'customer' => $this->customer->id,
+            'from_date' => '2026-07-01',
+            'to_date' => '2026-07-31',
+        ]);
+
+        $this->get($url)->assertRedirect();
+        $this->actingAs($this->user);
+        $response = $this->get($url);
+        $response->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $content = $response->streamedContent();
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
+        $this->assertStringContainsString('اسم العميل', $content);
+        $this->assertStringContainsString('عميل كشف الحساب', $content);
+        $this->assertStringContainsString('01/07/2026', $content);
+        $this->assertStringContainsString('31/07/2026', $content);
+        $this->assertStringContainsString('SI-EXPORT', $content);
+        $this->assertStringContainsString('RV-EXPORT', $content);
+        $this->assertStringNotContainsString('OTHER-CUSTOMER', $content);
+        $this->assertStringContainsString('"رصيد أول المدة",5000', $content);
+        $this->assertStringContainsString('"إجمالي المدين",1500', $content);
+        $this->assertStringContainsString('"إجمالي الدائن",500', $content);
+        $this->assertStringContainsString('"الرصيد الختامي",6000', $content);
+
+        $empty = $this->get(route('customer-statement.excel', [
+            'customer' => $this->customer->id,
+            'from_date' => '2027-01-01',
+            'to_date' => '2027-01-31',
+        ]));
+        $empty->assertOk();
+        $this->assertStringContainsString('الرصيد الختامي', $empty->streamedContent());
+    }
+
+    public function test_statement_uses_shared_report_wrapper_and_one_filtered_excel_action(): void
+    {
+        $this->invoice('SI-WRAPPER', '2026-07-05', 100);
+        $this->actingAs($this->user);
+        $component = Livewire::test(CustomerStatement::class)
+            ->fillForm([
+                'customer_id' => $this->customer->id,
+                'from_date' => '2026-07-01',
+                'to_date' => '2026-07-31',
+            ])
+            ->call('runReport')
+            ->assertSeeHtml('class="octram-report')
+            ->assertSeeHtml('octram-report-scroll')
+            ->assertSeeHtml(e(route('customer-statement.excel', [
+                'customer' => $this->customer->id,
+                'from_date' => '2026-07-01',
+                'to_date' => '2026-07-31',
+            ])));
+
+        $this->assertSame(1, substr_count($component->html(), 'تصدير Excel'));
+    }
+
     private function invoice(string $number, string $date, float $amount): SalesInvoice
     {
         $invoice = SalesInvoice::create([

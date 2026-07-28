@@ -28,9 +28,11 @@ class GoodsIssueVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'أذون الصرف';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationParentItem = 'عمليات المخزون';
+
+    protected static ?int $navigationSort = 30;
 
     public static function form(Schema $schema): Schema
     {

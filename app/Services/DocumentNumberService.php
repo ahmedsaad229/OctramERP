@@ -18,6 +18,8 @@ class DocumentNumberService
 
     public const SALES_QUOTATION = 'sales_quotation';
 
+    public const CUSTOMER_PURCHASE_ORDER = 'customer_purchase_order';
+
     public const GOODS_RECEIPT = 'goods_receipt';
 
     public const GOODS_ISSUE = 'goods_issue';
@@ -36,6 +38,7 @@ class DocumentNumberService
         self::SUPPLIER_PURCHASE_ORDER => 'PO',
         self::SALES_INVOICE => 'SAL',
         self::SALES_QUOTATION => 'QUO',
+        self::CUSTOMER_PURCHASE_ORDER => 'CPO',
         self::GOODS_RECEIPT => 'GRN',
         self::GOODS_ISSUE => 'GIS',
         self::OPENING_STOCK => 'OPN',

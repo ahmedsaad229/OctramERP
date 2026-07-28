@@ -378,11 +378,15 @@ class ReceiptVoucherSummaryTest extends TestCase
         Schema::create('receipt_vouchers', function (Blueprint $table): void {
             $table->id();
             $table->string('document_number')->unique();
+            $table->string('receipt_type', 20)->default('customer');
             $table->unsignedBigInteger('treasury_id');
-            $table->unsignedBigInteger('customer_id');
+            $table->unsignedBigInteger('customer_id')->nullable();
             $table->date('date');
             $table->decimal('amount', 15, 2);
             $table->string('payment_method', 30)->default('cash');
+            $table->string('receipt_reason', 50)->nullable();
+            $table->string('payer_name')->nullable();
+            $table->string('reference_number')->nullable();
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->timestamps();

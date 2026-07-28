@@ -28,7 +28,7 @@ class ReceiptVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'سندات قبض العملاء';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'الحسابات المالية';
+    protected static string|\UnitEnum|null $navigationGroup = 'المبيعات';
 
     protected static ?int $navigationSort = 1;
 

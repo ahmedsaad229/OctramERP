@@ -24,16 +24,22 @@ class ReceiptVoucherService
     public function create(array $data): ReceiptVoucher
     {
         return DB::transaction(function () use ($data): ReceiptVoucher {
+            $hasAllocations = array_key_exists('allocations', $data);
             $allocations = $data['allocations'] ?? [];
             unset($data['allocations'], $data['document_number']);
 
+            $data = $this->validateAndNormalize($data, $hasAllocations);
             $data['document_number'] = $this->documentNumberService
                 ->generate(DocumentNumberService::RECEIPT_VOUCHER);
-            $data['amount'] = 0;
+            if ($hasAllocations) {
+                $data['amount'] = 0;
+            }
             $data['created_by'] = auth()->id();
             $voucher = ReceiptVoucher::create($data);
 
-            $this->persistAllocations($voucher, $allocations);
+            if ($hasAllocations) {
+                $this->persistAllocations($voucher, $allocations);
+            }
             $this->applyFinancialEffect($voucher);
 
             return $voucher->fresh(['treasury', 'customer', 'creator', 'allocations']);
@@ -50,6 +56,7 @@ class ReceiptVoucherService
                 ->lockForUpdate()
                 ->findOrFail($voucher->getKey());
 
+            $hasAllocations = array_key_exists('allocations', $data);
             $allocations = $data['allocations'] ?? [];
             $invoiceIds = [
                 ...$voucher->allocations()->pluck('sales_invoice_id')->all(),
@@ -65,10 +72,16 @@ class ReceiptVoucherService
             $this->removeFinancialEffect($voucher);
             $voucher->allocations()->delete();
 
-            unset($data['allocations'], $data['amount'], $data['document_number'], $data['created_by']);
+            unset($data['allocations'], $data['document_number'], $data['created_by']);
+            $data = $this->validateAndNormalize($data, $hasAllocations);
+            if ($hasAllocations) {
+                unset($data['amount']);
+            }
             $voucher->update($data);
 
-            $this->persistAllocations($voucher, $allocations);
+            if ($hasAllocations) {
+                $this->persistAllocations($voucher, $allocations);
+            }
             $this->applyFinancialEffect($voucher);
 
             return $voucher->fresh(['treasury', 'customer', 'creator', 'allocations']);
@@ -106,16 +119,18 @@ class ReceiptVoucherService
             $voucher->created_by,
         );
 
-        $this->partyTransactionService->replaceDocumentTransaction(
-            $voucher->customer()->firstOrFail(),
-            PartyTransaction::TYPE_CUSTOMER_CREDIT,
-            $voucher,
-            $voucher->date,
-            0,
-            (float) $voucher->amount,
-            $voucher->document_number,
-            $voucher->notes,
-        );
+        if ($voucher->isCustomerReceipt()) {
+            $this->partyTransactionService->replaceDocumentTransaction(
+                $voucher->customer()->firstOrFail(),
+                PartyTransaction::TYPE_CUSTOMER_CREDIT,
+                $voucher,
+                $voucher->date,
+                0,
+                (float) $voucher->amount,
+                $voucher->document_number,
+                $voucher->notes,
+            );
+        }
     }
 
     private function removeFinancialEffect(ReceiptVoucher $voucher): void
@@ -227,5 +242,35 @@ class ReceiptVoucherService
         }
 
         $voucher->update(['amount' => $persistedTotal]);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validateAndNormalize(array $data, bool $hasAllocations): array
+    {
+        $type = (string) ($data['receipt_type'] ?? ReceiptVoucher::TYPE_CUSTOMER);
+
+        if (! array_key_exists($type, ReceiptVoucher::receiptTypeOptions())) {
+            throw ValidationException::withMessages(['data.receipt_type' => 'نوع الاستلام غير صحيح.']);
+        }
+
+        if ($type === ReceiptVoucher::TYPE_CUSTOMER && blank($data['customer_id'] ?? null)) {
+            throw ValidationException::withMessages(['data.customer_id' => 'يجب اختيار العميل.']);
+        }
+
+        if ($type === ReceiptVoucher::TYPE_GENERAL) {
+            $data['customer_id'] = null;
+        }
+
+        if (! $hasAllocations && (float) ($data['amount'] ?? 0) <= 0) {
+            throw ValidationException::withMessages(['data.amount' => 'يجب أن يكون المبلغ أكبر من صفر.']);
+        }
+
+        if (blank($data['treasury_id'] ?? null)) {
+            throw ValidationException::withMessages(['data.treasury_id' => 'يجب اختيار الخزينة.']);
+        }
+
+        $data['receipt_type'] = $type;
+
+        return $data;
     }
 }

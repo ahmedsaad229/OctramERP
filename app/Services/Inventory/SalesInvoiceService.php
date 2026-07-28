@@ -9,6 +9,7 @@ use App\Models\SalesQuotation;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Services\CompanyTaxSetting;
+use App\Services\CustomerPurchaseOrderService;
 use App\Services\Documents\DocumentDeletionGuard;
 use App\Services\DocumentTaxCalculator;
 use App\Services\PartyTransactionService;
@@ -41,7 +42,10 @@ class SalesInvoiceService
             $invoice = SalesInvoice::create($data);
             $invoice->items()->createMany($items);
 
-            return $this->post($invoice);
+            $invoice = $this->post($invoice);
+            app(CustomerPurchaseOrderService::class)->replaceSalesInvoiceExecutions($invoice);
+
+            return $invoice->fresh(['items', 'customer', 'warehouse']);
         });
     }
 
@@ -68,7 +72,10 @@ class SalesInvoiceService
             $invoice->items()->delete();
             $invoice->items()->createMany($items);
 
-            return $this->post($invoice);
+            $invoice = $this->post($invoice);
+            app(CustomerPurchaseOrderService::class)->replaceSalesInvoiceExecutions($invoice);
+
+            return $invoice->fresh(['items', 'customer', 'warehouse']);
         });
     }
 
@@ -80,6 +87,7 @@ class SalesInvoiceService
 
             $this->inventoryService->deleteDocumentTransactions($invoice->document_number);
             $this->partyTransactionService->deleteDocumentTransaction($invoice);
+            app(CustomerPurchaseOrderService::class)->removeSalesInvoiceExecutions($invoice);
             $invoice->items()->delete();
 
             return (bool) $invoice->delete();
@@ -138,6 +146,7 @@ class SalesInvoiceService
     private function normalizeItems(array $items): array
     {
         $normalized = [];
+        $seenOrderItems = [];
 
         foreach ($items as $item) {
             $itemId = (int) ($item['item_id'] ?? 0);
@@ -153,7 +162,15 @@ class SalesInvoiceService
             $quotationItemId = filled($item['sales_quotation_item_id'] ?? null)
                 ? (int) $item['sales_quotation_item_id']
                 : null;
-            $key = $quotationItemId ? "quotation-{$quotationItemId}" : "item-{$itemId}";
+            $orderItemId = filled($item['customer_purchase_order_item_id'] ?? null)
+                ? (int) $item['customer_purchase_order_item_id'] : null;
+            if ($orderItemId && isset($seenOrderItems[$orderItemId])) {
+                throw ValidationException::withMessages(['items' => 'لا يمكن تكرار نفس بند أمر التوريد داخل الفاتورة.']);
+            }
+            if ($orderItemId) {
+                $seenOrderItems[$orderItemId] = true;
+            }
+            $key = $orderItemId ? "order-{$orderItemId}" : ($quotationItemId ? "quotation-{$quotationItemId}" : "item-{$itemId}");
 
             if (! isset($normalized[$key])) {
                 $normalized[$key] = [
@@ -167,6 +184,9 @@ class SalesInvoiceService
                     'line_total' => 0.0,
                     'notes' => $item['notes'] ?? null,
                 ];
+                if ($orderItemId) {
+                    $normalized[$key]['customer_purchase_order_item_id'] = $orderItemId;
+                }
             }
 
             if ((float) $normalized[$key]['unit_price'] !== $unitPrice) {

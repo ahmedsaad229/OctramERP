@@ -28,9 +28,11 @@ class OpeningStockVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'مستندات أول المدة';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationParentItem = 'عمليات المخزون';
+
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

@@ -26,7 +26,11 @@ class WarehouseResource extends Resource
 
     protected static ?string $pluralModelLabel = 'المخازن';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'عمليات المخزون';
+    protected static string|\UnitEnum|null $navigationGroup = 'المخازن';
+
+    protected static ?string $navigationParentItem = 'إدارة المخزون';
+
+    protected static ?int $navigationSort = 40;
 
     protected static ?string $recordTitleAttribute = 'name';
 

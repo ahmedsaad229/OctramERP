@@ -121,4 +121,18 @@ class CustomerStatement extends Page
             'transaction_type' => $this->data['transaction_type'] ?? null,
         ], fn ($value): bool => filled($value)));
     }
+
+    public function excelUrl(): ?string
+    {
+        if (! $this->hasRun || blank($this->data['customer_id'] ?? null)) {
+            return null;
+        }
+
+        return route('customer-statement.excel', array_filter([
+            'customer' => $this->data['customer_id'],
+            'from_date' => $this->data['from_date'] ?? null,
+            'to_date' => $this->data['to_date'] ?? null,
+            'transaction_type' => $this->data['transaction_type'] ?? null,
+        ], fn ($value): bool => filled($value)));
+    }
 }

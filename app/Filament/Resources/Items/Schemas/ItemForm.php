@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Items\Schemas;
 
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -64,6 +64,12 @@ class ItemForm
                             ->label('الحد الأدنى')
                             ->numeric()
                             ->default(0),
+
+                        TextInput::make('reorder_level')
+                            ->label('حد إعادة الطلب')
+                            ->numeric()
+                            ->minValue(0)
+                            ->nullable(),
 
                         Toggle::make('allow_negative_stock')
                             ->label('السماح بمخزون سالب')

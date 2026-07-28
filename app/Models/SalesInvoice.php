@@ -23,6 +23,7 @@ class SalesInvoice extends BaseModel
         'customer_id',
         'warehouse_id',
         'sales_quotation_id',
+        'customer_purchase_order_id',
         'payment_type',
         'due_date',
         'discount_amount',
@@ -64,6 +65,11 @@ class SalesInvoice extends BaseModel
     public function salesQuotation(): BelongsTo
     {
         return $this->belongsTo(SalesQuotation::class);
+    }
+
+    public function customerPurchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(CustomerPurchaseOrder::class);
     }
 
     public function items(): HasMany

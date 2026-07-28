@@ -10,6 +10,7 @@ class SalesInvoiceItem extends BaseModel
         'sales_invoice_id',
         'item_id',
         'sales_quotation_item_id',
+        'customer_purchase_order_item_id',
         'unit_id',
         'quantity',
         'unit_price',

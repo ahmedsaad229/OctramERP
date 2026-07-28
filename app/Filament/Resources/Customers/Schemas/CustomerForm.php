@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\Customers\Schemas;
 
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\TextInput;
+use App\Models\Customer;
+use App\Services\CustomerPurchaseOrderMonitoringService;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class CustomerForm
@@ -18,11 +22,9 @@ class CustomerForm
                     ->schema([
 
                         TextInput::make('code')
-                        ->label('كود العميل')
-                        ->readOnly()
-                        ->dehydrated(),
-                        
-    
+                            ->label('كود العميل')
+                            ->readOnly()
+                            ->dehydrated(),
 
                         TextInput::make('name')
                             ->label('اسم العميل')
@@ -72,14 +74,22 @@ class CustomerForm
                     ]),
 
                 Textarea::make('address')
-    ->label('العنوان')
-    ->rows(3)
-    ->columnSpanFull(),
+                    ->label('العنوان')
+                    ->rows(3)
+                    ->columnSpanFull(),
 
-Textarea::make('notes')
-    ->label('ملاحظات')
-    ->rows(3)
-    ->columnSpanFull(),
+                Textarea::make('notes')
+                    ->label('ملاحظات')
+                    ->rows(3)
+                    ->columnSpanFull(),
+                Section::make('أوامر التوريد')->schema([
+                    View::make('filament.resources.customers.purchase-orders')
+                        ->viewData(fn (?Customer $record): array => [
+                            'summary' => $record
+                                ? app(CustomerPurchaseOrderMonitoringService::class)->customerSummary($record->getKey())
+                                : null,
+                        ]),
+                ])->visible(fn (?Customer $record): bool => filled($record))->columnSpanFull(),
             ]);
     }
 }

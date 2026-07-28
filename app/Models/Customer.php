@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\ProtectsDocumentDeletion;
 use App\Support\Octram\Traits\HasCode;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
@@ -30,4 +31,9 @@ class Customer extends Model
         'active',
         'notes',
     ];
+
+    public function customerPurchaseOrders(): HasMany
+    {
+        return $this->hasMany(CustomerPurchaseOrder::class);
+    }
 }

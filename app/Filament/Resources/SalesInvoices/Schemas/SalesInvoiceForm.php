@@ -7,11 +7,13 @@ use App\Enums\TaxType;
 use App\Models\Item;
 use App\Models\SalesInvoice;
 use App\Services\CompanyTaxSetting;
+use App\Services\CustomerPurchaseOrderConversionService;
 use App\Services\DocumentTaxCalculator;
 use App\Services\Inventory\InventoryService;
 use App\Services\SalesQuotationConversionService;
 use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -19,6 +21,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -83,6 +87,18 @@ class SalesInvoiceForm
                                 }
                             }),
 
+                        Select::make('customer_purchase_order_id')
+                            ->label('أمر توريد العميل')
+                            ->options(fn (Get $get, ?SalesInvoice $record): array => app(CustomerPurchaseOrderConversionService::class)->options(
+                                filled($get('customer_id')) ? (int) $get('customer_id') : null,
+                                $record?->customer_purchase_order_id,
+                            ))
+                            ->searchable()->preload()->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state, ?SalesInvoice $record): void {
+                                $set('order_import_lines', blank($state) ? [] : app(CustomerPurchaseOrderConversionService::class)
+                                    ->lines((int) $state, $record?->getKey()));
+                            }),
+
                         Select::make('payment_type')
                             ->label('نوع التعامل')
                             ->options(PaymentType::options())
@@ -112,6 +128,10 @@ class SalesInvoiceForm
                             ->searchable()
                             ->preload()
                             ->live()
+                            ->afterStateUpdated(function (Set $set): void {
+                                $set('customer_purchase_order_id', null);
+                                $set('order_import_lines', []);
+                            })
                             ->required(),
 
                         Select::make('warehouse_id')
@@ -141,6 +161,34 @@ class SalesInvoiceForm
                 ->columns(1)
                 ->columnSpanFull(),
 
+            Section::make('استيراد بنود أمر توريد العميل')
+                ->visible(fn (Get $get): bool => filled($get('customer_purchase_order_id')))
+                ->schema([
+                    Repeater::make('order_import_lines')->label('البنود المتاحة')->schema([
+                        Hidden::make('customer_purchase_order_item_id'), Hidden::make('item_id'),
+                        Hidden::make('unit_id'), Hidden::make('remaining_quantity'), Hidden::make('description'),
+                        Grid::make(['default' => 1, 'md' => 4, 'xl' => 10])->schema([
+                            Toggle::make('selected')->label('اختيار'),
+                            TextInput::make('item_code')->label('كود الصنف')->readOnly()->dehydrated(),
+                            TextInput::make('item_name')->label('الصنف')->readOnly()->dehydrated()->columnSpan(2),
+                            TextInput::make('unit_name')->label('الوحدة')->readOnly()->dehydrated(),
+                            TextInput::make('ordered_quantity')->label('المطلوب')->readOnly()->dehydrated(),
+                            TextInput::make('executed_quantity')->label('المنفذ سابقًا')->readOnly()->dehydrated(),
+                            TextInput::make('import_quantity')->label('كمية الاستيراد')->type('text')->inputMode('decimal')
+                                ->extraInputAttributes(QuantityFormatter::inputAttributes())->rules(['numeric', 'gt:0']),
+                            TextInput::make('unit_price')->label('سعر الوحدة')->type('text')->inputMode('decimal')
+                                ->extraInputAttributes(QuantityFormatter::inputAttributes())->rules(['numeric', 'gte:0']),
+                            TextInput::make('tax_rate')->label('الضريبة')->readOnly()->dehydrated(),
+                        ]),
+                    ])->addable(false)->deletable(false)->reorderable(false),
+                    Actions::make([
+                        Action::make('import_order_lines')->label('استيراد البنود المحددة')
+                            ->icon('heroicon-o-arrow-down-tray')
+                            ->action(fn (Get $get, Set $set) => $set('items', app(CustomerPurchaseOrderConversionService::class)
+                                ->invoiceItems($get('order_import_lines') ?? []))),
+                    ]),
+                ])->columnSpanFull(),
+
             Section::make('أصناف الفاتورة')
                 ->schema([
                     Repeater::make('items')
@@ -152,6 +200,7 @@ class SalesInvoiceForm
                                 'xl' => 13,
                             ])->schema([
                                 Hidden::make('sales_quotation_item_id'),
+                                Hidden::make('customer_purchase_order_item_id'),
                                 Hidden::make('unit_id'),
                                 Hidden::make('discount_amount'),
                                 Hidden::make('tax_amount'),
