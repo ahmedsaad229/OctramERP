@@ -30,6 +30,7 @@ class SalesQuotationConversionService
             return [
                 'sales_quotation_item_id' => $item->getKey(),
                 'item_id' => $item->item_id,
+                'is_stock_item_state' => $item->item?->is_stock_item,
                 'unit_id' => $item->unit_id,
                 'quantity' => $remaining,
                 'unit_price' => $item->unit_price,

@@ -45,7 +45,7 @@ class SalesQuotationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->admin()->create();
         $this->actingAs($this->user);
         $this->customer = Customer::create(['code' => 'CUS-Q', 'name' => 'عميل العرض']);
         $this->warehouse = Warehouse::create(['code' => 'WH-Q', 'name' => 'مخزن العرض']);
@@ -205,6 +205,48 @@ class SalesQuotationTest extends TestCase
             ->assertSee('octram-quotation-unit-box', escape: false)
             ->assertSee('dir="ltr"', escape: false)
             ->assertSee('unicode-bidi: isolate', escape: false);
+    }
+
+    public function test_item_without_unit_is_excluded_and_valid_item_can_be_saved(): void
+    {
+        $itemWithoutUnit = Item::create([
+            'code' => 'ITM-NO-UNIT',
+            'name' => 'صنف بدون وحدة',
+            'category_id' => $this->item->category_id,
+            'unit_id' => null,
+            'sale_price' => 50,
+            'active' => true,
+        ]);
+
+        Livewire::test(CreateSalesQuotation::class)
+            ->assertDontSee($itemWithoutUnit->name)
+            ->assertSee($this->item->name)
+            ->fillForm([
+                'quotation_date' => '2026-07-26',
+                'valid_until' => '2026-08-26',
+                'customer_id' => $this->customer->id,
+                'warehouse_id' => $this->warehouse->id,
+                'tax_type' => TaxType::Vat14->value,
+                'items' => [[
+                    'item_id' => $this->item->id,
+                    'unit_id' => $this->unit->id,
+                    'quantity' => 2,
+                    'unit_price' => 100,
+                    'discount_amount' => 0,
+                ]],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('sales_quotations', [
+            'customer_id' => $this->customer->id,
+            'total_amount' => 228,
+        ]);
+        $this->assertDatabaseHas('sales_quotation_items', [
+            'item_id' => $this->item->id,
+            'unit_id' => $this->unit->id,
+            'quantity' => 2,
+        ]);
     }
 
     public function test_edit_and_delete_unlinked_quotation(): void

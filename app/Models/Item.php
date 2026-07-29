@@ -19,6 +19,7 @@ class Item extends BaseModel
         'barcode',
         'name',
         'name_en',
+        'is_stock_item',
         'category_id',
         'unit_id',
         'purchase_price',
@@ -31,6 +32,7 @@ class Item extends BaseModel
     ];
 
     protected $casts = [
+        'is_stock_item' => 'boolean',
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'minimum_stock' => 'decimal:2',
@@ -47,5 +49,15 @@ class Item extends BaseModel
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function isStockItem(): bool
+    {
+        return (bool) ($this->is_stock_item ?? true);
+    }
+
+    public function isNonStockItem(): bool
+    {
+        return ! $this->isStockItem();
     }
 }

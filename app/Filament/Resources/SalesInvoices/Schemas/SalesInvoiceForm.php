@@ -143,7 +143,9 @@ class SalesInvoiceForm
                             )
                             ->searchable()
                             ->preload()
-                            ->required()
+                            ->required(fn (Get $get): bool => collect($get('items') ?? [])->contains(
+                                fn (array $item): bool => (bool) ($item['is_stock_item_state'] ?? false),
+                            ))
                             ->live(),
 
                         Select::make('tax_type')
@@ -202,13 +204,24 @@ class SalesInvoiceForm
                                 Hidden::make('sales_quotation_item_id'),
                                 Hidden::make('customer_purchase_order_item_id'),
                                 Hidden::make('unit_id'),
+                                Hidden::make('is_stock_item_state')->dehydrated(false),
                                 Hidden::make('discount_amount'),
                                 Hidden::make('tax_amount'),
                                 Select::make('item_id')
                                     ->label('الصنف')
                                     ->options(fn (): array => Item::query()
                                         ->where('active', true)
+                                        ->where(function ($query): void {
+                                            $query->where('is_stock_item', false)
+                                                ->orWhere(function ($query): void {
+                                                    $query->where('is_stock_item', true)
+                                                        ->whereNotNull('unit_id')
+                                                        ->whereHas('unit');
+                                                });
+                                        })
+                                        ->with('unit')
                                         ->orderBy('name')
+                                        ->get()
                                         ->pluck('name', 'id')
                                         ->all())
                                     ->searchable()
@@ -217,10 +230,10 @@ class SalesInvoiceForm
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, mixed $state): void {
-                                        $set(
-                                            'unit_price',
-                                            Item::query()->whereKey($state)->value('sale_price') ?? 0,
-                                        );
+                                        $item = Item::query()->with('unit')->find($state);
+                                        $set('is_stock_item_state', $item?->is_stock_item);
+                                        $set('unit_id', $item?->unit_id);
+                                        $set('unit_price', $item?->sale_price ?? 0);
                                     })
                                     ->columnSpan([
                                         'default' => 1,
@@ -251,13 +264,14 @@ class SalesInvoiceForm
 
                                 Placeholder::make('warehouse_stock_balance')
                                     ->label('الرصيد بالمخزن')
-                                    ->content(fn (Get $get, ?SalesInvoice $record): string => QuantityFormatter::formatForDisplay(
-                                        app(InventoryService::class)->availableForSalesInvoice(
+                                    ->content(fn (Get $get, ?SalesInvoice $record): string => $get('is_stock_item_state') === false
+                                        ? '—'
+                                        : QuantityFormatter::formatForDisplay(app(InventoryService::class)->availableForSalesInvoice(
                                             (int) $get('../../warehouse_id'),
                                             (int) $get('item_id'),
                                             $record?->getKey(),
-                                        ),
-                                    ))
+                                        )))
+                                    ->visible(fn (Get $get): bool => $get('is_stock_item_state') !== false)
                                     ->extraAttributes(DocumentFieldPresentation::stock())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()

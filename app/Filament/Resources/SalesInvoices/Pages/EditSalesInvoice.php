@@ -24,9 +24,11 @@ class EditSalesInvoice extends EditRecord
     {
         $data['items'] = $this->getRecord()
             ->items()
+            ->with('item')
             ->get(['item_id', 'sales_quotation_item_id', 'customer_purchase_order_item_id', 'unit_id', 'quantity', 'unit_price', 'discount_amount', 'tax_amount', 'notes'])
             ->map(fn ($item): array => [
                 'item_id' => $item->item_id,
+                'is_stock_item_state' => $item->item?->is_stock_item,
                 'sales_quotation_item_id' => $item->sales_quotation_item_id,
                 'customer_purchase_order_item_id' => $item->customer_purchase_order_item_id,
                 'unit_id' => $item->unit_id,

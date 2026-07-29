@@ -31,6 +31,11 @@ class ItemsTable
                     ->searchable()
                     ->sortable(),
 
+                IconColumn::make('is_stock_item')
+                    ->label('يؤثر على المخزون')
+                    ->boolean()
+                    ->sortable(),
+
                 TextColumn::make('unit.name')
                     ->label('الوحدة')
                     ->searchable()

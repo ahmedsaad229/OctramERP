@@ -15,6 +15,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -50,23 +51,56 @@ class SalesQuotationForm
                     Repeater::make('items')->label('الأصناف')->schema([
                         Grid::make(['default' => 1, 'md' => 2, 'xl' => 12])->schema([
                             Select::make('item_id')->label('الصنف')
-                                ->options(fn (): array => Item::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())
+                                ->options(fn (): array => Item::query()
+                                    ->where('active', true)
+                                    ->where(function ($query): void {
+                                        $query->where('is_stock_item', false)
+                                            ->orWhere(function ($query): void {
+                                                $query->where('is_stock_item', true)
+                                                    ->whereNotNull('unit_id')
+                                                    ->whereHas('unit');
+                                            });
+                                    })
+                                    ->with('unit')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->pluck('name', 'id')
+                                    ->all())
                                 ->searchable()->preload()->required()->distinct()->live()
                                 ->afterStateUpdated(function (Set $set, mixed $state): void {
                                     $item = Item::query()->with('unit')->find($state);
+
+                                    if ($item?->isStockItem() && (! $item->unit_id || ! $item->unit)) {
+                                        $set('item_id', null);
+                                        $set('unit_id', null);
+                                        $set('unit_name', null);
+                                        $set('item_code_state', null);
+                                        $set('unit_price', 0);
+
+                                        Notification::make()
+                                            ->danger()
+                                            ->title('لا يمكن استخدام هذا الصنف لعدم تحديد وحدة افتراضية له.')
+                                            ->send();
+
+                                        return;
+                                    }
+
+                                    $set('is_stock_item_state', $item?->is_stock_item);
                                     $set('unit_id', $item?->unit_id);
                                     $set('unit_name', $item?->unit?->name);
                                     $set('item_code_state', $item?->code);
                                     $set('unit_price', $item?->sale_price ?? 0);
                                 })->columnSpan(['md' => 2, 'xl' => 4]),
                             Hidden::make('item_code_state')->dehydrated(false),
+                            Hidden::make('is_stock_item_state')->dehydrated(false),
                             Placeholder::make('item_code')->label('كود الصنف')
                                 ->content(fn (Get $get): string => $get('item_code_state') ?: (Item::find($get('item_id'))?->code ?? '—'))
                                 ->alignCenter()
                                 ->extraAttributes(self::readOnlyValueAttributes('octram-quotation-item-code-box', ltr: true))
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes('octram-quotation-readonly-entry'))
                                 ->columnSpan(['xl' => 2]),
-                            Hidden::make('unit_id')->required(),
+                            Hidden::make('unit_id')
+                                ->required(fn (Get $get): bool => (bool) $get('is_stock_item_state')),
                             Hidden::make('unit_name')->dehydrated(false),
                             Placeholder::make('unit_name_display')
                                 ->label('الوحدة')
@@ -96,14 +130,20 @@ class SalesQuotationForm
                                 ->columnSpan(['xl' => 3]),
                             Placeholder::make('warehouse_balance')
                                 ->label('رصيد المخزن')
-                                ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay(app(InventoryService::class)->warehouseBalance($get('../../warehouse_id'), $get('item_id'))))
+                                ->content(fn (Get $get): string => $get('is_stock_item_state') === false
+                                    ? '—'
+                                    : QuantityFormatter::formatForDisplay(app(InventoryService::class)->warehouseBalance($get('../../warehouse_id'), $get('item_id'))))
+                                ->visible(fn (Get $get): bool => $get('is_stock_item_state') !== false)
                                 ->extraAttributes(self::centeredValueAttributes('octram-quotation-summary-box octram-quotation-stock-box'))
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes())
                                 ->alignCenter()
                                 ->columnSpan(['xl' => 3]),
                             Placeholder::make('total_balance')
                                 ->label('إجمالي الرصيد')
-                                ->content(fn (Get $get): string => QuantityFormatter::formatForDisplay(app(InventoryService::class)->totalBalance($get('item_id'))))
+                                ->content(fn (Get $get): string => $get('is_stock_item_state') === false
+                                    ? '—'
+                                    : QuantityFormatter::formatForDisplay(app(InventoryService::class)->totalBalance($get('item_id'))))
+                                ->visible(fn (Get $get): bool => $get('is_stock_item_state') !== false)
                                 ->extraAttributes(self::centeredValueAttributes('octram-quotation-summary-box octram-quotation-stock-box'))
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes())
                                 ->alignCenter()
@@ -112,6 +152,7 @@ class SalesQuotationForm
                         Placeholder::make('stock_warning')->label('تنبيه الرصيد')
                             ->content('الكمية المطلوبة أكبر من الرصيد المتاح بالمخزن.')
                             ->visible(fn (Get $get): bool => filled($get('item_id'))
+                                && (bool) $get('is_stock_item_state')
                                 && filled($get('../../warehouse_id'))
                                 && (float) $get('quantity') > app(InventoryService::class)->warehouseBalance($get('../../warehouse_id'), $get('item_id')))
                             ->extraAttributes(['class' => 'text-warning-600 dark:text-warning-400'])

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\TaxType;
 use App\Models\Item;
 use App\Models\SalesQuotation;
+use App\Models\Unit;
 use App\Services\Documents\DocumentDeletionGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -77,14 +78,20 @@ class SalesQuotationService
 
         $items = collect($data['items'])->values()->map(function (array $row, int $index) use ($taxType): array {
             $item = Item::query()->find($row['item_id'] ?? null);
-            $unitId = (int) ($row['unit_id'] ?? 0);
+            $unitId = filled($row['unit_id'] ?? null) ? (int) $row['unit_id'] : null;
             $quantity = (float) ($row['quantity'] ?? 0);
             $unitPrice = (float) ($row['unit_price'] ?? 0);
             $discount = round((float) ($row['discount_amount'] ?? 0), 2);
             $base = round($quantity * $unitPrice, 2);
 
-            if (! $item || ! $item->unit_id || $unitId !== (int) $item->unit_id) {
-                throw ValidationException::withMessages(["items.{$index}.unit_id" => 'وحدة الصنف لا تطابق الوحدة الافتراضية المسجلة.']);
+            if (! $item || ! $item->active) {
+                throw ValidationException::withMessages(["items.{$index}.item_id" => 'البند المحدد غير موجود أو غير نشط.']);
+            }
+            if ($item->isStockItem() && (! $item->unit_id || $unitId !== (int) $item->unit_id)) {
+                throw ValidationException::withMessages(["items.{$index}.unit_id" => 'يجب تحديد الوحدة الافتراضية الصحيحة للبند الذي يؤثر على المخزون.']);
+            }
+            if ($item->isNonStockItem() && $unitId && ! Unit::query()->whereKey($unitId)->exists()) {
+                throw ValidationException::withMessages(["items.{$index}.unit_id" => 'الوحدة المحددة للبند غير موجودة.']);
             }
             if ($quantity <= 0 || $unitPrice < 0 || $discount < 0 || $discount > $base) {
                 throw ValidationException::withMessages(["items.{$index}" => 'بيانات الكمية أو السعر أو الخصم غير صحيحة.']);
@@ -94,7 +101,7 @@ class SalesQuotationService
 
             return [
                 'item_id' => $item->getKey(),
-                'unit_id' => $unitId,
+                'unit_id' => $item->isNonStockItem() ? $unitId : (int) $item->unit_id,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'discount_amount' => $discount,

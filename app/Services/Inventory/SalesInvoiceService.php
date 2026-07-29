@@ -3,11 +3,13 @@
 namespace App\Services\Inventory;
 
 use App\Enums\TaxType;
+use App\Models\Item;
 use App\Models\PartyTransaction;
 use App\Models\SalesInvoice;
 use App\Models\SalesQuotation;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
+use App\Models\Unit;
 use App\Services\CompanyTaxSetting;
 use App\Services\CustomerPurchaseOrderService;
 use App\Services\Documents\DocumentDeletionGuard;
@@ -35,6 +37,7 @@ class SalesInvoiceService
             $this->validateElectronicInvoiceNumber($data);
             $this->validateQuotationLink($data);
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->validateWarehouseRequirement($data, $items);
             $this->applyTaxTotals($data, $items);
             $this->validateAvailableStock((int) ($data['warehouse_id'] ?? 0), $items);
             unset($data['items'], $data['document_number']);
@@ -60,6 +63,7 @@ class SalesInvoiceService
             $data['tax_type'] ??= $invoice->tax_type->value;
             $this->validateQuotationLink($data, (int) $invoice->getKey());
             $items = $this->normalizeItems($data['items'] ?? []);
+            $this->validateWarehouseRequirement($data, $items);
             $this->applyTaxTotals($data, $items);
             $this->validateAvailableStock(
                 (int) ($data['warehouse_id'] ?? 0),
@@ -96,27 +100,31 @@ class SalesInvoiceService
 
     private function post(SalesInvoice $invoice): SalesInvoice
     {
-        $invoice->load('items', 'customer');
+        $invoice->load('items.item', 'customer');
 
-        $transactions = $invoice->items
-            ->map(function ($item) use ($invoice): array {
-                $averageCost = StockBalance::query()
-                    ->where('warehouse_id', $invoice->warehouse_id)
-                    ->where('item_id', $item->item_id)
-                    ->lockForUpdate()
-                    ->value('average_cost') ?? 0;
+        $transactions = [];
 
-                return [
-                    'warehouse_id' => $invoice->warehouse_id,
-                    'item_id' => $item->item_id,
-                    'transaction_type' => StockTransaction::TYPE_SALE,
-                    'quantity' => $item->quantity,
-                    'unit_cost' => $averageCost,
-                    'transaction_date' => $invoice->invoice_date,
-                    'notes' => $invoice->notes,
-                ];
-            })
-            ->all();
+        foreach ($invoice->items as $invoiceItem) {
+            if ($invoiceItem->item?->isNonStockItem()) {
+                continue;
+            }
+
+            $averageCost = StockBalance::query()
+                ->where('warehouse_id', $invoice->warehouse_id)
+                ->where('item_id', $invoiceItem->item_id)
+                ->lockForUpdate()
+                ->value('average_cost') ?? 0;
+
+            $transactions[] = [
+                'warehouse_id' => $invoice->warehouse_id,
+                'item_id' => $invoiceItem->item_id,
+                'transaction_type' => StockTransaction::TYPE_SALE,
+                'quantity' => $invoiceItem->quantity,
+                'unit_cost' => $averageCost,
+                'transaction_date' => $invoice->invoice_date,
+                'notes' => $invoice->notes,
+            ];
+        }
 
         $this->inventoryService->replaceDocumentTransactions(
             $invoice->document_number,
@@ -159,6 +167,21 @@ class SalesInvoiceService
                 ]);
             }
 
+            $inventoryItem = Item::query()->find($itemId);
+            if (! $inventoryItem || ! $inventoryItem->active) {
+                throw ValidationException::withMessages(['items' => 'أحد بنود الفاتورة غير موجود أو غير نشط.']);
+            }
+
+            $unitId = filled($item['unit_id'] ?? null)
+                ? (int) $item['unit_id']
+                : ($inventoryItem->isStockItem() ? (int) $inventoryItem->unit_id : null);
+            if ($inventoryItem->isStockItem() && (! $inventoryItem->unit_id || $unitId !== (int) $inventoryItem->unit_id)) {
+                throw ValidationException::withMessages(['items' => 'يجب تحديد الوحدة الافتراضية الصحيحة لكل بند يؤثر على المخزون.']);
+            }
+            if ($inventoryItem->isNonStockItem() && $unitId && ! Unit::query()->whereKey($unitId)->exists()) {
+                throw ValidationException::withMessages(['items' => 'الوحدة المحددة لأحد البنود غير موجودة.']);
+            }
+
             $quotationItemId = filled($item['sales_quotation_item_id'] ?? null)
                 ? (int) $item['sales_quotation_item_id']
                 : null;
@@ -176,7 +199,7 @@ class SalesInvoiceService
                 $normalized[$key] = [
                     'item_id' => $itemId,
                     'sales_quotation_item_id' => $quotationItemId,
-                    'unit_id' => $item['unit_id'] ?? null,
+                    'unit_id' => $inventoryItem->isNonStockItem() ? $unitId : (int) $inventoryItem->unit_id,
                     'quantity' => 0.0,
                     'unit_price' => $unitPrice,
                     'discount_amount' => (float) ($item['discount_amount'] ?? 0),
@@ -252,6 +275,10 @@ class SalesInvoiceService
         ?int $salesInvoiceId = null,
     ): void {
         foreach ($items as $item) {
+            if (Item::query()->find($item['item_id'])?->isNonStockItem()) {
+                continue;
+            }
+
             $availableQuantity = $this->inventoryService->availableForSalesInvoice(
                 $warehouseId,
                 (int) $item['item_id'],
@@ -263,6 +290,21 @@ class SalesInvoiceService
                     'items' => 'الكمية المطلوبة غير متوفرة في المخزن.',
                 ]);
             }
+        }
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private function validateWarehouseRequirement(array $data, array $items): void
+    {
+        $hasStockItems = Item::query()
+            ->whereIn('id', collect($items)->pluck('item_id'))
+            ->where('is_stock_item', true)
+            ->exists();
+
+        if ($hasStockItems && blank($data['warehouse_id'] ?? null)) {
+            throw ValidationException::withMessages([
+                'warehouse_id' => 'يجب تحديد المخزن عند وجود بنود مخزنية.',
+            ]);
         }
     }
 

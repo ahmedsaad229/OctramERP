@@ -17,6 +17,7 @@ class EditSalesQuotation extends EditRecord
     {
         $data['items'] = $this->record->items()->with(['item', 'unit'])->get()->map(fn ($item): array => [
             'item_id' => $item->item_id, 'item_code_state' => $item->item?->code,
+            'is_stock_item_state' => $item->item?->is_stock_item,
             'unit_id' => $item->unit_id, 'unit_name' => $item->unit?->name,
             'quantity' => $item->quantity, 'unit_price' => $item->unit_price,
             'discount_amount' => $item->discount_amount, 'notes' => $item->notes,

@@ -7,6 +7,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ItemForm
@@ -31,6 +32,12 @@ class ItemForm
                         TextInput::make('name_en')
                             ->label('الاسم بالإنجليزية'),
 
+                        Toggle::make('is_stock_item')
+                            ->label('يؤثر على المخزون')
+                            ->helperText('أوقف هذا الخيار للبنود التي لا تحتاج إلى حركة أو رصيد مخزني، مثل الصيانة والتركيب والأعمال.')
+                            ->default(true)
+                            ->live(),
+
                         TextInput::make('sku')
                             ->label('SKU'),
 
@@ -48,7 +55,8 @@ class ItemForm
                             ->label('وحدة القياس')
                             ->relationship('unit', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->required(fn (Get $get): bool => (bool) $get('is_stock_item')),
 
                         TextInput::make('purchase_price')
                             ->label('سعر الشراء')

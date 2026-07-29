@@ -309,7 +309,7 @@
                 <td class="numeric">{{ $loop->iteration }}</td>
                 <td class="item-code">{{ $item->item->code }}</td>
                 <td class="description">{{ $item->item->name }}</td>
-                <td>{{ $item->unit->name }}</td>
+                <td>{{ $item->unit?->name ?: '—' }}</td>
                 <td class="numeric">{{ \App\Support\QuantityFormatter::formatForDisplay($item->quantity) }}</td>
                 <td class="numeric">{{ number_format((float) $item->unit_price, 2) }} ج.م</td>
                 <td class="numeric">{{ number_format((float) $item->discount_amount, 2) }} ج.م</td>
