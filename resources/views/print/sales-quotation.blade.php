@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>عرض سعر {{ $quotation->quotation_number }}</title>
-    @vite(['resources/css/app.css'])
     <style>
         @page {
             size: A4 portrait;
