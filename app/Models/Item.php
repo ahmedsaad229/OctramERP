@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtectsDocumentDeletion;
+use App\Support\ItemNameNormalizer;
 use App\Support\Octram\Traits\HasCode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,6 +19,7 @@ class Item extends BaseModel
         'sku',
         'barcode',
         'name',
+        'name_normalized',
         'name_en',
         'is_stock_item',
         'category_id',
@@ -40,6 +42,14 @@ class Item extends BaseModel
         'allow_negative_stock' => 'boolean',
         'active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $item): void {
+            $item->name = trim((string) $item->name);
+            $item->name_normalized = ItemNameNormalizer::normalize($item->name);
+        });
+    }
 
     public function category(): BelongsTo
     {

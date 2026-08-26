@@ -148,6 +148,17 @@ class SalesInvoiceForm
                             ))
                             ->live(),
 
+                        Toggle::make('one_percent_discount_enabled')
+                            ->label('خصم وإضافة 1%')
+                            ->helperText('يُحسب 1% من صافي الفاتورة قبل ضريبة القيمة المضافة')
+                            ->default(false)
+                            ->live(),
+                        Toggle::make('service_tax_discount_enabled')
+                            ->label('خصم ضريبة خدمات 3%')
+                            ->helperText('يُحسب 3% من صافي الفاتورة قبل ضريبة القيمة المضافة')
+                            ->default(false)
+                            ->live(),
+
                         Select::make('tax_type')
                             ->label('الضريبة')
                             ->options([
@@ -303,6 +314,17 @@ class SalesInvoiceForm
                                         'xl' => 3,
                                     ]),
 
+                                Toggle::make('tax_exempt')
+                                    ->label('استثناء من الضريبة')
+                                    ->helperText('فعّل فقط إذا كان هذا البند غير خاضع للضريبة.')
+                                    ->default(false)
+                                    ->live()
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 3,
+                                        'xl' => 2,
+                                    ]),
+
                                 Placeholder::make('line_total_display')
                                     ->label('الإجمالي')
                                     ->content(fn (Get $get): string => self::money(
@@ -372,11 +394,85 @@ class SalesInvoiceForm
     /** @return array{taxable_amount: float, tax_amount: float, total: float} */
     private static function calculation(Get $get): array
     {
-        return app(DocumentTaxCalculator::class)->calculate(
-            self::subtotal($get),
-            (float) $get('discount_amount'),
-            TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None,
+        $items = collect($get('items') ?? []);
+        $taxType = TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None;
+
+        $subtotal = self::subtotal($get);
+
+        $lineDiscountTotal = round(
+            (float) $items->sum(function (array $item): float {
+                $base = (float) ($item['quantity'] ?? 0) * (float) ($item['unit_price'] ?? 0);
+
+                return min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
+            }),
+            2
         );
+
+        $discount = min(
+            $subtotal,
+            max($lineDiscountTotal, max(0, (float) $get('discount_amount')))
+        );
+
+        $additionalDiscount = max(0, $discount - $lineDiscountTotal);
+
+        $netBeforeAdditional = (float) $items->sum(function (array $item): float {
+            $base = (float) ($item['quantity'] ?? 0) * (float) ($item['unit_price'] ?? 0);
+            $lineDiscount = min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
+
+            return max(0, $base - $lineDiscount);
+        });
+
+        $tax = (float) $items->sum(function (array $item) use (
+            $taxType,
+            $additionalDiscount,
+            $netBeforeAdditional
+        ): float {
+            if ((bool) ($item['tax_exempt'] ?? false)) {
+                return 0.0;
+            }
+
+            $base = (float) ($item['quantity'] ?? 0) * (float) ($item['unit_price'] ?? 0);
+            $lineDiscount = min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
+            $lineNet = max(0, $base - $lineDiscount);
+
+            $extraShare = ($additionalDiscount > 0 && $netBeforeAdditional > 0)
+                ? round($additionalDiscount * ($lineNet / $netBeforeAdditional), 2)
+                : 0.0;
+
+            return (float) app(DocumentTaxCalculator::class)
+                ->calculate($lineNet, min($lineNet, $extraShare), $taxType)['tax_amount'];
+        });
+
+        $taxableAmount = round(max(0, $subtotal - $discount), 2);
+
+        /*
+         * خصم ضريبة خدمات 3%
+         * يحسب من صافي الفاتورة قبل ضريبة القيمة المضافة.
+         */
+        $serviceTaxDiscount = (bool) $get('service_tax_discount_enabled')
+            ? round($taxableAmount * 0.03, 2)
+            : 0.0;
+
+        $onePercentDiscount = (bool) $get('one_percent_discount_enabled')
+            ? round($taxableAmount * 0.01, 2)
+            : 0.0;
+
+        return [
+            'taxable_amount' => $taxableAmount,
+            'tax_amount' => round($tax, 2),
+            'service_tax_discount' => $serviceTaxDiscount,
+            'one_percent_discount' => $onePercentDiscount,
+            'total' => round(
+                max(
+                    0,
+                    $taxableAmount
+                    + $tax
+                    - $serviceTaxDiscount
+                    - $onePercentDiscount
+                ),
+                2
+            ),
+        ];
     }
 
     private static function money(float $amount): string

@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>كشف حساب مورد - {{ $report['supplier']->name }}</title>
-    @vite(['resources/css/app.css'])
     <style>
         @page { size: A4 portrait; margin: 10mm; }
         * { box-sizing: border-box; }
@@ -22,6 +21,7 @@
         .signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; margin-top: 28px; text-align: center; }
         @media print { body { background: #fff; } .statement { width: auto; min-height: auto; margin: 0; padding: 0; box-shadow: none; } .toolbar { display: none; } }
     </style>
+    @include('print.partials.report-style')
 </head>
 <body>
     <main class="statement">

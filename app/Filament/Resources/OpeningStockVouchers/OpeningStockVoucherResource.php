@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\OpeningStockVouchers;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\OpeningStockVouchers\Pages\CreateOpeningStockVoucher;
 use App\Filament\Resources\OpeningStockVouchers\Pages\EditOpeningStockVoucher;
 use App\Filament\Resources\OpeningStockVouchers\Pages\ListOpeningStockVouchers;
@@ -9,13 +11,13 @@ use App\Filament\Resources\OpeningStockVouchers\Schemas\OpeningStockVoucherForm;
 use App\Filament\Resources\OpeningStockVouchers\Tables\OpeningStockVouchersTable;
 use App\Models\OpeningStockVoucher;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class OpeningStockVoucherResource extends Resource
+class OpeningStockVoucherResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'opening_stock_vouchers';
     protected static ?string $model = OpeningStockVoucher::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBox;

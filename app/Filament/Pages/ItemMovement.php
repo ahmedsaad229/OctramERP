@@ -116,4 +116,14 @@ class ItemMovement extends Page
             'transaction_type' => $this->data['transaction_type'] ?? null,
         ], fn ($value): bool => filled($value)));
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('item_movement.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('item_movement.view') === true;
+    }
 }

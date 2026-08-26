@@ -17,6 +17,10 @@ class Customer extends Model
     protected $fillable = [
         'code',
         'name',
+        'contact_person',
+        'contact_job_title',
+        'contact_mobile',
+        'contact_email',
         'mobile',
         'phone',
         'email',
@@ -31,6 +35,11 @@ class Customer extends Model
         'active',
         'notes',
     ];
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(CustomerFollowUp::class);
+    }
 
     public function customerPurchaseOrders(): HasMany
     {

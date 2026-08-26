@@ -6,6 +6,7 @@ use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\SalesQuotations\SalesQuotationResource;
 use App\Models\SalesQuotation;
 use App\Services\SalesQuotationService;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,8 +20,14 @@ class EditSalesQuotation extends EditRecord
             'item_id' => $item->item_id, 'item_code_state' => $item->item?->code,
             'is_stock_item_state' => $item->item?->is_stock_item,
             'unit_id' => $item->unit_id, 'unit_name' => $item->unit?->name,
-            'quantity' => $item->quantity, 'unit_price' => $item->unit_price,
-            'discount_amount' => $item->discount_amount, 'notes' => $item->notes,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->unit_price,
+            'discount_type' => $item->discount_type ?: 'value',
+            'discount_value' => (float) $item->discount_value,
+            'discount_amount' => (float) $item->discount_amount,
+            'tax_exempt' => (bool) $item->tax_exempt,
+            'tax_amount' => (float) $item->tax_amount,
+            'notes' => $item->notes,
         ])->all();
 
         return $data;
@@ -33,6 +40,16 @@ class EditSalesQuotation extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [ProtectedDeleteAction::make()->using(fn (SalesQuotation $record): bool => app(SalesQuotationService::class)->delete($record))];
+        return [
+            Action::make('delivery_note')
+                ->label('طباعة إذن تسليم')
+                ->icon('heroicon-o-truck')
+                ->color('gray')
+                ->url(fn (SalesQuotation $record): string => route('sales-quotations.delivery-note', $record))
+                ->openUrlInNewTab(),
+
+            ProtectedDeleteAction::make()
+                ->using(fn (SalesQuotation $record): bool => app(SalesQuotationService::class)->delete($record)),
+        ];
     }
 }

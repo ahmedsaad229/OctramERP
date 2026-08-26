@@ -29,6 +29,10 @@ class SalesInvoice extends BaseModel
         'discount_amount',
         'tax_type',
         'tax_amount',
+        'service_tax_discount_enabled',
+        'service_tax_discount_amount',
+        'one_percent_discount_enabled',
+        'one_percent_discount_amount',
         'notes',
     ];
 
@@ -40,6 +44,10 @@ class SalesInvoice extends BaseModel
         'discount_amount' => 'decimal:2',
         'tax_type' => TaxType::class,
         'tax_amount' => 'decimal:2',
+        'service_tax_discount_enabled' => 'boolean',
+        'service_tax_discount_amount' => 'decimal:2',
+        'one_percent_discount_enabled' => 'boolean',
+        'one_percent_discount_amount' => 'decimal:2',
     ];
 
     protected static function booted(): void
@@ -88,11 +96,16 @@ class SalesInvoice extends BaseModel
             ? $this->items->sum('line_total')
             : $this->items()->sum('line_total'));
 
-        return app(DocumentTaxCalculator::class)->calculate(
-            $subtotal,
-            (float) $this->discount_amount,
-            $this->tax_type ?? TaxType::None,
-        )['total'];
+        return round(
+            max(
+                0,
+                max(0, $subtotal - (float) $this->discount_amount)
+                + (float) $this->tax_amount
+                - (float) $this->service_tax_discount_amount
+                - (float) $this->one_percent_discount_amount
+            ),
+            2
+        );
     }
 
     public function paidAmount(?int $excludingReceiptVoucherId = null): float

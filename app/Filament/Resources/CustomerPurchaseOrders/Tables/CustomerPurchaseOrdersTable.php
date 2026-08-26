@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CustomerPurchaseOrders\Tables;
 
+
+use Filament\Actions\Action;
 use App\Models\CustomerPurchaseOrder;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -26,6 +28,24 @@ class CustomerPurchaseOrdersTable
         ])->filters([
             SelectFilter::make('customer_id')->label('العميل')->relationship('customer', 'name')->searchable()->preload(),
             SelectFilter::make('status')->label('الحالة')->options(CustomerPurchaseOrder::statusOptions()),
-        ])->recordActions([EditAction::make()]);
+                ])->recordActions([
+            Action::make('print')
+                ->label('طباعة')
+                ->icon('heroicon-o-printer')
+                ->iconButton()
+                ->color('gray')
+                ->tooltip('طباعة أمر توريد العميل')
+                ->url(
+                    fn (CustomerPurchaseOrder $record): string => route(
+                        'customer-purchase-orders.print',
+                        $record
+                    )
+                )
+                ->openUrlInNewTab(),
+
+            EditAction::make()
+                ->iconButton()
+                ->tooltip('تعديل'),
+        ]);
     }
 }

@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\SupplierPurchaseOrders\Tables;
 
+
+
+use Filament\Actions\Action;
+use App\Models\SupplierPurchaseOrder;
 use App\Enums\PaymentType;
 use App\Enums\TaxType;
 use App\Support\QuantityFormatter;
@@ -20,11 +24,16 @@ class SupplierPurchaseOrdersTable
         return $table
             ->defaultSort('order_date', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['items.item', 'supplier', 'purchaseRequest', 'warehouse'])
+                ->with(['items.item', 'supplier', 'purchaseRequest', 'warehouse', 'createdBy'])
                 ->withCount('items'))
             ->columns([
                 TextColumn::make('code')->label('رقم أمر التوريد')->searchable()->sortable(),
                 TextColumn::make('order_date')->label('التاريخ')->date()->sortable(),
+                TextColumn::make('createdBy.name')
+                    ->label('أنشأ بواسطة')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('supplier.name')->label('المورد')->searchable()->sortable(),
                 TextColumn::make('purchaseRequest.code')->label('طلب الشراء')->searchable(),
                 TextColumn::make('warehouse.name')->label('المخزن')->placeholder('—'),
@@ -111,7 +120,18 @@ class SupplierPurchaseOrdersTable
                     ->when($data['from'] ?? null, fn (Builder $query, $date): Builder => $query->whereDate('expected_delivery_date', '>=', $date))
                     ->when($data['until'] ?? null, fn (Builder $query, $date): Builder => $query->whereDate('expected_delivery_date', '<=', $date))),
             ])
-            ->recordActions([EditAction::make()])
+            ->recordActions([                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (SupplierPurchaseOrder $record): string => route(
+                            'supplier-purchase-orders.print',
+                            $record
+                        )
+                    )
+                    ->openUrlInNewTab(),
+EditAction::make()])
             ->emptyStateHeading('لا توجد أوامر توريد');
     }
 }

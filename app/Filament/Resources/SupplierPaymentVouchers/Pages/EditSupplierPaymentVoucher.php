@@ -41,7 +41,18 @@ class EditSupplierPaymentVoucher extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ProtectedDeleteAction::make()
+                        Action::make('print')
+                ->label('طباعة / حفظ PDF')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(
+                    fn (SupplierPaymentVoucher $record): string => route(
+                        'supplier-payment-vouchers.print',
+                        $record
+                    )
+                )
+                ->openUrlInNewTab(),
+ProtectedDeleteAction::make()
                 ->modalHeading('هل تريد حذف سند صرف المورد؟')
                 ->successNotificationTitle('تم حذف سند الصرف بنجاح.')
                 ->using(fn (SupplierPaymentVoucher $record): bool => app(

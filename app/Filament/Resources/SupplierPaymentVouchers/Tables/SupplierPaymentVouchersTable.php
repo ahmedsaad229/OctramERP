@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SupplierPaymentVouchers\Tables;
 
+
+use Filament\Actions\Action;
 use App\Enums\PaymentMethod;
 use App\Models\SupplierPaymentVoucher;
 use App\Support\ArabicMoney;
@@ -116,7 +118,18 @@ class SupplierPaymentVouchersTable
                         ->when($data['until'] ?? null, fn (Builder $query, mixed $date): Builder => $query->whereDate('voucher_date', '<=', $date))),
             ])
             ->recordActions([
-                EditAction::make(),
+                                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (SupplierPaymentVoucher $record): string => route(
+                            'supplier-payment-vouchers.print',
+                            $record
+                        )
+                    )
+                    ->openUrlInNewTab(),
+EditAction::make(),
             ]);
     }
 }

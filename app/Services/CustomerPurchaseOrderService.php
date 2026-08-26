@@ -7,6 +7,7 @@ use App\Models\CustomerPurchaseOrder;
 use App\Models\CustomerPurchaseOrderExecution;
 use App\Models\CustomerPurchaseOrderItem;
 use App\Models\SalesInvoice;
+use App\Models\SalesQuotation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -218,22 +219,66 @@ class CustomerPurchaseOrderService
                 throw ValidationException::withMessages(["items.{$index}.ordered_quantity" => 'لا يمكن أن تقل الكمية المطلوبة عن الكمية المنفذة.']);
             }
 
-            return [...$row, 'id' => $id, 'executed_quantity' => $executed, 'remaining_quantity' => $quantity - $executed, 'line_subtotal' => round($quantity * (float) ($row['unit_price'] ?? 0), 2), 'line_total' => round($quantity * (float) ($row['unit_price'] ?? 0), 2), 'sort_order' => $index];
+            $lineSubtotal = round($quantity * (float) ($row['unit_price'] ?? 0), 2);
+            $discount = min($lineSubtotal, max(0, round((float) ($row['discount_amount'] ?? 0), 2)));
+            $taxExempt = (bool) ($row['tax_exempt'] ?? false);
+            $taxRate = $taxExempt ? 0.0 : max(0, (float) ($row['tax_rate'] ?? 0));
+            $lineTax = $taxExempt
+                ? 0.0
+                : round(max(0, $lineSubtotal - $discount) * ($taxRate / 100), 2);
+
+            return [
+                ...$row,
+                'id' => $id,
+                'executed_quantity' => $executed,
+                'remaining_quantity' => $quantity - $executed,
+                'discount_amount' => $discount,
+                'tax_exempt' => $taxExempt,
+                'tax_rate' => $taxRate,
+                'line_subtotal' => $lineSubtotal,
+                'line_tax' => $lineTax,
+                'line_total' => round($lineSubtotal - $discount + $lineTax, 2),
+                'sort_order' => $index,
+            ];
         }, $items, array_keys($items));
     }
 
     private function validateHeader(array $data): void
-    {
-        if (blank($data['customer_id'] ?? null)) {
-            throw ValidationException::withMessages(['customer_id' => 'يجب اختيار العميل.']);
-        }
-        if (blank($data['order_date'] ?? null)) {
-            throw ValidationException::withMessages(['order_date' => 'تاريخ الأمر مطلوب.']);
-        }
-        if (filled($data['required_delivery_date'] ?? null) && $data['required_delivery_date'] < $data['order_date']) {
-            throw ValidationException::withMessages(['required_delivery_date' => 'تاريخ التسليم لا يجوز أن يسبق تاريخ الأمر.']);
+{
+    if (blank($data['customer_id'] ?? null)) {
+        throw ValidationException::withMessages([
+            'customer_id' => 'يجب اختيار العميل.',
+        ]);
+    }
+
+    if (blank($data['order_date'] ?? null)) {
+        throw ValidationException::withMessages([
+            'order_date' => 'تاريخ الأمر مطلوب.',
+        ]);
+    }
+
+    if (
+        filled($data['required_delivery_date'] ?? null)
+        && $data['required_delivery_date'] < $data['order_date']
+    ) {
+        throw ValidationException::withMessages([
+            'required_delivery_date' => 'تاريخ التسليم لا يجوز أن يسبق تاريخ الأمر.',
+        ]);
+    }
+
+    if (filled($data['sales_quotation_id'] ?? null)) {
+        $quotationExists = SalesQuotation::query()
+            ->whereKey($data['sales_quotation_id'])
+            ->where('customer_id', $data['customer_id'])
+            ->exists();
+
+        if (! $quotationExists) {
+            throw ValidationException::withMessages([
+                'sales_quotation_id' => 'عرض السعر المحدد لا يتبع العميل المختار.',
+            ]);
         }
     }
+}
 
     private function persistAttachments(CustomerPurchaseOrder $order, array $attachments): void
     {

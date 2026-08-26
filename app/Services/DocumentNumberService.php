@@ -32,6 +32,8 @@ class DocumentNumberService
 
     public const TREASURY = 'treasury';
 
+    public const CUSTOMER_FOLLOW_UP = 'customer_follow_up';
+
     private const PREFIXES = [
         self::PURCHASE_INVOICE => 'PUR',
         self::PURCHASE_REQUEST => 'PR',
@@ -45,6 +47,7 @@ class DocumentNumberService
         self::PAYMENT_VOUCHER => 'PAY',
         self::RECEIPT_VOUCHER => 'REC',
         self::TREASURY => 'TRE',
+        self::CUSTOMER_FOLLOW_UP => 'FUP',
     ];
 
     public function generate(string $documentType, ?Carbon $date = null): string

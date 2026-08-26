@@ -20,14 +20,15 @@ class SalesQuotation extends BaseModel
 
     protected $fillable = [
         'quotation_number', 'quotation_date', 'valid_until', 'customer_id', 'warehouse_id',
-        'tax_type', 'subtotal', 'discount_amount', 'tax_amount', 'total_amount',
-        'notes', 'terms_and_conditions', 'created_by',
+        'tax_type', 'exclude_totals', 'subtotal', 'discount_amount', 'tax_amount', 'total_amount',
+        'notes', 'terms_and_conditions', 'sales_responsible_id', 'created_by',
     ];
 
     protected $casts = [
         'quotation_date' => 'date',
         'valid_until' => 'date',
         'tax_type' => TaxType::class,
+        'exclude_totals' => 'boolean',
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
@@ -40,6 +41,7 @@ class SalesQuotation extends BaseModel
             $quotation->quotation_number ??= app(DocumentNumberService::class)
                 ->generate(DocumentNumberService::SALES_QUOTATION);
             $quotation->created_by ??= auth()->id();
+            $quotation->sales_responsible_id ??= auth()->id();
         });
     }
 
@@ -51,6 +53,11 @@ class SalesQuotation extends BaseModel
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function salesResponsible(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sales_responsible_id');
     }
 
     public function creator(): BelongsTo

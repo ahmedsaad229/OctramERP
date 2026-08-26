@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesInvoices;
 
+use App\Filament\Resources\Core\BaseResource;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
@@ -10,13 +11,14 @@ use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceForm;
 use App\Filament\Resources\SalesInvoices\Tables\SalesInvoicesTable;
 use App\Models\SalesInvoice;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class SalesInvoiceResource extends Resource
+class SalesInvoiceResource extends BaseResource
 {
+    protected static string $permissionPrefix = 'sales_invoices';
+
     protected static ?string $model = SalesInvoice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCurrencyDollar;

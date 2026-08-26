@@ -119,6 +119,8 @@ class ReceiptVoucherService
             $voucher->created_by,
         );
 
+        app(JournalEntryService::class)->postReceiptVoucher($voucher);
+
         if ($voucher->isCustomerReceipt()) {
             $this->partyTransactionService->replaceDocumentTransaction(
                 $voucher->customer()->firstOrFail(),
@@ -137,6 +139,7 @@ class ReceiptVoucherService
     {
         $this->treasuryTransactionService->deleteForSource($voucher);
         $this->partyTransactionService->deleteDocumentTransaction($voucher);
+        app(JournalEntryService::class)->deleteForSource($voucher);
     }
 
     /**
@@ -212,11 +215,18 @@ class ReceiptVoucherService
                 ]);
             }
 
-            $invoiceTotal = (float) $invoice->items()->sum('line_total');
-            $previouslyPaid = (float) $invoice->receiptAllocations()->sum('amount');
-            $remainingAmount = max(0, $invoiceTotal - $previouslyPaid);
+            $invoiceTotal = round($invoice->totalAmount(), 2);
+            $previouslyPaid = round(
+                (float) $invoice->receiptAllocations()->sum('amount'),
+                2,
+            );
+            $remainingAmount = max(
+                0,
+                round($invoiceTotal - $previouslyPaid, 2),
+            );
+            $allocationAmount = round((float) $allocation['amount'], 2);
 
-            if ($allocation['amount'] > $remainingAmount) {
+            if ($allocationAmount > $remainingAmount) {
                 throw ValidationException::withMessages([
                     "data.allocations.{$index}.amount" => 'المبلغ المحصل أكبر من المتبقي على الفاتورة.',
                 ]);

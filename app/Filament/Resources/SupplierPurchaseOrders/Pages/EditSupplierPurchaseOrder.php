@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SupplierPurchaseOrders\Pages;
 
+
+use Filament\Actions\Action;
 use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\SupplierPurchaseOrders\SupplierPurchaseOrderResource;
 use App\Models\SupplierPurchaseOrder;
@@ -52,7 +54,18 @@ class EditSupplierPurchaseOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ProtectedDeleteAction::make()
+                        Action::make('print')
+                ->label('طباعة / حفظ PDF')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(
+                    fn (SupplierPurchaseOrder $record): string => route(
+                        'supplier-purchase-orders.print',
+                        $record
+                    )
+                )
+                ->openUrlInNewTab(),
+ProtectedDeleteAction::make()
                 ->using(fn (SupplierPurchaseOrder $record): bool => app(SupplierPurchaseOrderService::class)->delete($record)),
         ];
     }

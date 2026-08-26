@@ -2,7 +2,8 @@
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>حركة صنف</title>
 <style>
 @page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;color:#111827;font-size:10px}.toolbar{margin-bottom:10px}button{padding:7px 14px}table{width:100%;border-collapse:collapse;margin-top:12px}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #d1d5db;padding:5px;text-align:center}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.box{border:1px solid #d1d5db;padding:7px}.ltr{direction:ltr;unicode-bidi:isolate}@media print{.toolbar{display:none}}
-</style></head><body>
+</style>    @include('print.partials.report-style')
+</head><body>
 <div class="toolbar"><button onclick="window.print()">طباعة / حفظ PDF</button></div>
 <x-company-document-header :settings="$settings" document-title="حركة صنف" :document-number="$report['item']->code" :document-date="now()->format('d/m/Y')" />
 <p><strong>الصنف:</strong> {{ $report['item']->name }} — <strong>الوحدة:</strong> {{ $report['item']->unit?->name ?: '—' }} — <strong>المخزن:</strong> {{ $report['warehouse']?->name ?: 'كل المخازن' }}</p>

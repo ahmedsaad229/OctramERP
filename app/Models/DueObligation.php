@@ -31,6 +31,8 @@ class DueObligation extends Model
         'invoice_date' => 'date',
         'due_date' => 'date',
         'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
     ];
 
     public function getKey(): mixed

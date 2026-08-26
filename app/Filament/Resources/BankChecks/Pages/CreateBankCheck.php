@@ -1,0 +1,2 @@
+<?php
+namespace App\Filament\Resources\BankChecks\Pages; use App\Filament\Resources\BankChecks\BankCheckResource; use App\Services\BankCheckService; use Filament\Resources\Pages\CreateRecord; class CreateBankCheck extends CreateRecord { protected static string $resource=BankCheckResource::class; protected function handleRecordCreation(array $data):\Illuminate\Database\Eloquent\Model{return app(BankCheckService::class)->create($data);} }

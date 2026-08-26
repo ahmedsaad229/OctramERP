@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPurchaseOrders;
 
+use App\Filament\Resources\Core\BaseResource;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\CreateCustomerPurchaseOrder;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\EditCustomerPurchaseOrder;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\ListCustomerPurchaseOrders;
@@ -9,12 +10,13 @@ use App\Filament\Resources\CustomerPurchaseOrders\Schemas\CustomerPurchaseOrderF
 use App\Filament\Resources\CustomerPurchaseOrders\Tables\CustomerPurchaseOrdersTable;
 use App\Models\CustomerPurchaseOrder;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 
-class CustomerPurchaseOrderResource extends Resource
+class CustomerPurchaseOrderResource extends BaseResource
 {
+    protected static string $permissionPrefix = 'customer_purchase_orders';
+
     protected static ?string $model = CustomerPurchaseOrder::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';

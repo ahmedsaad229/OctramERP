@@ -34,7 +34,12 @@ class SalesQuotationConversionService
                 'unit_id' => $item->unit_id,
                 'quantity' => $remaining,
                 'unit_price' => $item->unit_price,
+                'discount_type' => $item->discount_type ?? 'value',
+                'discount_value' => $item->discount_type === 'percent'
+                    ? (float) $item->discount_value
+                    : round((float) $item->discount_value, 2),
                 'discount_amount' => round((float) $item->discount_amount * $ratio, 2),
+                'tax_exempt' => (bool) $item->tax_exempt,
                 'tax_amount' => round((float) $item->tax_amount * $ratio, 2),
                 'notes' => $item->notes,
             ];

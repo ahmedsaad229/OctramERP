@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\GoodsReceiptVouchers;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\GoodsReceiptVouchers\Pages\CreateGoodsReceiptVoucher;
 use App\Filament\Resources\GoodsReceiptVouchers\Pages\EditGoodsReceiptVoucher;
 use App\Filament\Resources\GoodsReceiptVouchers\Pages\ListGoodsReceiptVouchers;
@@ -9,13 +11,13 @@ use App\Filament\Resources\OpeningStockVouchers\Schemas\OpeningStockVoucherForm;
 use App\Filament\Resources\OpeningStockVouchers\Tables\OpeningStockVouchersTable;
 use App\Models\GoodsReceiptVoucher;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class GoodsReceiptVoucherResource extends Resource
+class GoodsReceiptVoucherResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'goods_receipt_vouchers';
     protected static ?string $model = GoodsReceiptVoucher::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowDownTray;

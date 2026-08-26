@@ -3,11 +3,16 @@
 namespace App\Filament\Resources\Items\Tables;
 
 use App\Filament\Actions\ProtectedDeleteBulkAction;
+use App\Filament\Resources\PurchaseRequests\PurchaseRequestResource;
+use App\Filament\Resources\SalesQuotations\SalesQuotationResource;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class ItemsTable
 {
@@ -62,13 +67,49 @@ class ItemsTable
 
             ])
             ->filters([
-                //
+                SelectFilter::make("category_id")
+                    ->label("الفئة")
+                    ->relationship("category", "name")
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('create_purchase_request')
+                        ->label('إنشاء طلب شراء')
+                        ->icon('heroicon-o-shopping-cart')
+                        ->color('primary')
+                        ->visible(fn (): bool => PurchaseRequestResource::canCreate())
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $ids = $records->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
+
+                            return redirect()->to(
+                                PurchaseRequestResource::getUrl('create', [
+                                    'item_ids' => implode(',', $ids),
+                                ])
+                            );
+                        }),
+
+                    BulkAction::make('create_sales_quotation')
+                        ->label('إنشاء عرض سعر')
+                        ->icon('heroicon-o-document-text')
+                        ->color('success')
+                        ->visible(fn (): bool => SalesQuotationResource::canCreate())
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $ids = $records->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
+
+                            return redirect()->to(
+                                SalesQuotationResource::getUrl('create', [
+                                    'item_ids' => implode(',', $ids),
+                                ])
+                            );
+                        }),
+
                     ProtectedDeleteBulkAction::make(),
                 ]),
             ]);

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SupplierPurchaseOrders;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\SupplierPurchaseOrders\Pages\CreateSupplierPurchaseOrder;
 use App\Filament\Resources\SupplierPurchaseOrders\Pages\EditSupplierPurchaseOrder;
 use App\Filament\Resources\SupplierPurchaseOrders\Pages\ListSupplierPurchaseOrders;
@@ -9,13 +11,13 @@ use App\Filament\Resources\SupplierPurchaseOrders\Schemas\SupplierPurchaseOrderF
 use App\Filament\Resources\SupplierPurchaseOrders\Tables\SupplierPurchaseOrdersTable;
 use App\Models\SupplierPurchaseOrder;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class SupplierPurchaseOrderResource extends Resource
+class SupplierPurchaseOrderResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'supplier_purchase_orders';
     protected static ?string $model = SupplierPurchaseOrder::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

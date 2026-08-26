@@ -11,6 +11,14 @@ class CompanySetting extends BaseModel
         'company_name',
         'default_tax_type',
         'logo_path',
+        'default_sales_quotation_terms',
+        'address',
+        'phone',
+        'mobile',
+        'email',
+        'website',
+        'commercial_registry',
+        'tax_number',
     ];
 
     protected $casts = [
@@ -38,7 +46,10 @@ class CompanySetting extends BaseModel
 
     public function logoUrl(): ?string
     {
-        if (blank($this->logo_path) || ! Storage::disk('public')->exists($this->logo_path)) {
+        if (
+            blank($this->logo_path)
+            || ! Storage::disk('public')->exists($this->logo_path)
+        ) {
             return null;
         }
 
@@ -49,8 +60,9 @@ class CompanySetting extends BaseModel
     {
         $configured = trim((string) config('company.name', ''));
 
-        return filled($configured) && strcasecmp($configured, 'Laravel') !== 0
-            ? $configured
-            : 'أوكترام للمقاولات والتوريدات';
+        return filled($configured)
+            && strcasecmp($configured, 'Laravel') !== 0
+                ? $configured
+                : 'أوكترام للمقاولات والتوريدات';
     }
 }

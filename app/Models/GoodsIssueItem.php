@@ -23,7 +23,10 @@ class GoodsIssueItem extends BaseModel
 
     public function voucher(): BelongsTo
     {
-        return $this->belongsTo(GoodsIssueVoucher::class);
+        return $this->belongsTo(
+            GoodsIssueVoucher::class,
+            "goods_issue_voucher_id"
+        );
     }
 
     public function item(): BelongsTo

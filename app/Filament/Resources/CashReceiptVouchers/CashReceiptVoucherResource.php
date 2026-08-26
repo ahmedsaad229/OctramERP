@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CashReceiptVouchers;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\CashReceiptVouchers\Pages\CreateCashReceiptVoucher;
 use App\Filament\Resources\CashReceiptVouchers\Pages\EditCashReceiptVoucher;
 use App\Filament\Resources\CashReceiptVouchers\Pages\ListCashReceiptVouchers;
@@ -9,13 +11,13 @@ use App\Filament\Resources\CashReceiptVouchers\Schemas\CashReceiptVoucherForm;
 use App\Filament\Resources\CashReceiptVouchers\Tables\CashReceiptVouchersTable;
 use App\Models\ReceiptVoucher;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class CashReceiptVoucherResource extends Resource
+class CashReceiptVoucherResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'cash_receipt_vouchers';
     protected static ?string $model = ReceiptVoucher::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowDownTray;

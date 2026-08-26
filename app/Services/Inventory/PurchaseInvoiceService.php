@@ -118,6 +118,8 @@ class PurchaseInvoiceService
                     'remaining_quantity' => $remaining,
                     'quantity' => $remaining,
                     'unit_cost' => (float) $orderItem->unit_price,
+                    'tax_exempt' => false,
+                    'tax_amount' => 0,
                     'total_cost' => round($remaining * (float) $orderItem->unit_price, 2),
                     'notes' => $orderItem->notes,
                 ];
@@ -152,6 +154,27 @@ class PurchaseInvoiceService
         $data['tax_type'] ??= app(CompanyTaxSetting::class)->resolve()->value;
 
         return DB::transaction(function () use ($data): PurchaseInvoice {
+            $data['supplier_document_type'] = in_array(
+                $data['supplier_document_type'] ?? 'invoice',
+                ['price_statement', 'invoice'],
+                true
+            ) ? ($data['supplier_document_type'] ?? 'invoice') : 'invoice';
+
+            $data['invoice_number'] = $data['supplier_document_type'] === 'invoice'
+                ? $this->normalizeInvoiceNumber($data['invoice_number'] ?? null)
+                : null;
+
+            if ($data['supplier_document_type'] === 'invoice' && blank($data['invoice_number'])) {
+                throw ValidationException::withMessages([
+                    'invoice_number' => 'رقم فاتورة المورد مطلوب عند اختيار نوع المستند: فاتورة.',
+                ]);
+            }
+
+            $this->validateSupplierInvoiceNumber(
+                (int) ($data['supplier_id'] ?? 0),
+                $data['invoice_number'],
+            );
+
             $items = $this->validateAndNormalizeItems($data);
             $this->applyTaxTotals($data, $items);
             unset($data['items'], $data['code']);
@@ -168,6 +191,29 @@ class PurchaseInvoiceService
     {
         return DB::transaction(function () use ($invoice, $data): PurchaseInvoice {
             $invoice = PurchaseInvoice::query()->lockForUpdate()->findOrFail($invoice->getKey());
+
+            $data['supplier_document_type'] = in_array(
+                $data['supplier_document_type'] ?? $invoice->supplier_document_type ?? 'invoice',
+                ['price_statement', 'invoice'],
+                true
+            ) ? ($data['supplier_document_type'] ?? $invoice->supplier_document_type ?? 'invoice') : 'invoice';
+
+            $data['invoice_number'] = $data['supplier_document_type'] === 'invoice'
+                ? $this->normalizeInvoiceNumber($data['invoice_number'] ?? $invoice->invoice_number)
+                : null;
+
+            if ($data['supplier_document_type'] === 'invoice' && blank($data['invoice_number'])) {
+                throw ValidationException::withMessages([
+                    'invoice_number' => 'رقم فاتورة المورد مطلوب عند اختيار نوع المستند: فاتورة.',
+                ]);
+            }
+
+            $this->validateSupplierInvoiceNumber(
+                (int) ($data['supplier_id'] ?? $invoice->supplier_id),
+                $data['invoice_number'],
+                (int) $invoice->getKey(),
+            );
+
             $data['tax_type'] ??= $invoice->tax_type?->value ?? TaxType::Vat14->value;
             $items = $this->validateAndNormalizeItems($data, $invoice);
             $this->applyTaxTotals($data, $items);
@@ -189,6 +235,7 @@ class PurchaseInvoiceService
             app(DocumentDeletionGuard::class)->assertCanDelete($invoice);
             $this->inventoryService->deleteDocumentTransactions($invoice->code);
             $this->partyTransactionService->deleteDocumentTransaction($invoice);
+            app(\App\Services\JournalEntryService::class)->deleteForSource($invoice);
             $invoice->items()->delete();
 
             return (bool) $invoice->delete();
@@ -209,16 +256,25 @@ class PurchaseInvoiceService
                 $invoice->items,
             );
 
+            $invoiceTotal = $invoice->totalAmount();
+            $paymentType = $invoice->payment_type instanceof PaymentType
+                ? $invoice->payment_type->value
+                : (string) $invoice->payment_type;
+
             $this->partyTransactionService->replaceDocumentTransaction(
                 $invoice->supplier,
                 PartyTransaction::TYPE_PURCHASE_INVOICE,
                 $invoice,
                 $invoice->invoice_date,
-                0,
-                $invoice->totalAmount(),
+                $paymentType === PaymentType::Cash->value ? $invoiceTotal : 0,
+                $invoiceTotal,
                 $invoice->code,
-                $invoice->notes,
+                $paymentType === PaymentType::Cash->value
+                    ? ($invoice->notes ?: 'فاتورة شراء نقدية مسددة فورًا')
+                    : $invoice->notes,
             );
+
+            app(\App\Services\JournalEntryService::class)->postPurchaseInvoice($invoice);
 
             if (! $invoice->posted) {
                 $invoice->posted = true;
@@ -326,6 +382,8 @@ class PurchaseInvoiceService
                 'item_id' => $itemId,
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
+                'tax_exempt' => (bool) ($item['tax_exempt'] ?? false),
+                'tax_amount' => 0,
                 'total_cost' => round($quantity * $unitCost, 2),
                 'notes' => $item['notes'] ?? null,
             ];
@@ -334,21 +392,79 @@ class PurchaseInvoiceService
         return $normalized;
     }
 
+    private function normalizeInvoiceNumber(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return ($value === '' || $value === '0') ? null : $value;
+    }
+
+    private function validateSupplierInvoiceNumber(
+        int $supplierId,
+        ?string $invoiceNumber,
+        ?int $excludingInvoiceId = null,
+    ): void {
+        if ($supplierId <= 0 || blank($invoiceNumber)) {
+            return;
+        }
+
+        $exists = PurchaseInvoice::query()
+            ->where('supplier_id', $supplierId)
+            ->where('invoice_number', $invoiceNumber)
+            ->when(
+                $excludingInvoiceId,
+                fn ($query) => $query->whereKeyNot($excludingInvoiceId),
+            )
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'invoice_number' => 'رقم فاتورة المورد مستخدم بالفعل لنفس المورد.',
+            ]);
+        }
+    }
+
     /** @param array<int, array<string, mixed>> $items */
-    private function applyTaxTotals(array &$data, array $items): void
+    private function applyTaxTotals(array &$data, array &$items): void
     {
         $taxType = TaxType::tryFrom((string) ($data['tax_type'] ?? TaxType::None->value));
 
         if (! $taxType) {
-            throw ValidationException::withMessages(['tax_type' => 'نوع الضريبة المحدد غير صالح.']);
+            throw ValidationException::withMessages([
+                'tax_type' => 'نوع الضريبة المحدد غير صالح.',
+            ]);
         }
 
-        $subtotal = (float) collect($items)->sum('total_cost');
-        $discount = max(0, round((float) ($data['discount_amount'] ?? 0), 2));
-        $calculation = app(DocumentTaxCalculator::class)->calculate($subtotal, $discount, $taxType);
-        $data['discount_amount'] = $discount;
+        $subtotal = round((float) collect($items)->sum('total_cost'), 2);
+        $discount = min(
+            $subtotal,
+            max(0, round((float) ($data['discount_amount'] ?? 0), 2))
+        );
+
+        $taxTotal = 0.0;
+
+        foreach ($items as &$item) {
+            $base = max(0, (float) ($item['total_cost'] ?? 0));
+
+            $discountShare = ($discount > 0 && $subtotal > 0)
+                ? round($discount * ($base / $subtotal), 2)
+                : 0.0;
+
+            $tax = (bool) ($item['tax_exempt'] ?? false)
+                ? 0.0
+                : (float) app(DocumentTaxCalculator::class)
+                    ->calculate($base, min($base, $discountShare), $taxType)['tax_amount'];
+
+            $item['tax_exempt'] = (bool) ($item['tax_exempt'] ?? false);
+            $item['tax_amount'] = round($tax, 2);
+            $taxTotal += $tax;
+        }
+        unset($item);
+
+        $data['discount_amount'] = round($discount, 2);
         $data['tax_type'] = $taxType->value;
-        $data['tax_amount'] = $calculation['tax_amount'];
+        $data['tax_amount'] = round($taxTotal, 2);
+
         unset($data['total'], $data['subtotal']);
     }
 }

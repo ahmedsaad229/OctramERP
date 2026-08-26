@@ -9,13 +9,17 @@ class SalesQuotationItem extends BaseModel
 {
     protected $fillable = [
         'sales_quotation_id', 'item_id', 'unit_id', 'quantity', 'unit_price',
-        'discount_amount', 'tax_amount', 'line_total', 'notes',
+        'discount_type',
+        'discount_value',
+        'discount_amount', 'tax_exempt', 'tax_amount', 'line_total', 'notes',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
+        'discount_value' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'tax_exempt' => 'boolean',
         'tax_amount' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];

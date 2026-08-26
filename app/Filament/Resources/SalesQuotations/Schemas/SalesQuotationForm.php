@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\SalesQuotations\Schemas;
 
 use App\Enums\TaxType;
+use App\Models\CompanySetting;
 use App\Models\Item;
+use App\Models\User;
 use App\Services\CompanyTaxSetting;
 use App\Services\DocumentTaxCalculator;
 use App\Services\Inventory\InventoryService;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -37,6 +40,18 @@ class SalesQuotationForm
                         DatePicker::make('valid_until')->label('صالح حتى')->prefixIcon('heroicon-o-calendar-days')->native(false)->minDate(fn (Get $get) => $get('quotation_date'))
                             ->helperText(fn (Get $get): ?string => self::expiryHint($get('valid_until'))),
                         Select::make('customer_id')->label('العميل')->prefixIcon('heroicon-o-user')->relationship('customer', 'name')->searchable()->preload()->required(),
+                        Select::make('sales_responsible_id')
+                            ->label('مسؤول المبيعات')
+                            ->prefixIcon('heroicon-o-user-circle')
+                            ->options(fn (): array => User::query()
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->default(fn (): ?int => auth()->id())
+                            ->searchable()
+                            ->preload()
+                            ->required(),
                         Select::make('warehouse_id')->label('المخزن')->prefixIcon('heroicon-o-building-storefront')->relationship('warehouse', 'name')->searchable()->preload()->live(),
                         Select::make('tax_type')->label('نوع الضريبة')->prefixIcon('heroicon-o-receipt-percent')->options([
                             TaxType::Vat14->value => 'ضريبة قيمة مضافة 14%',
@@ -49,7 +64,7 @@ class SalesQuotationForm
                 ->icon('heroicon-o-shopping-cart')
                 ->schema([
                     Repeater::make('items')->label('الأصناف')->schema([
-                        Grid::make(['default' => 1, 'md' => 2, 'xl' => 12])->schema([
+                        Grid::make(['default' => 1, 'md' => 2, 'xl' => 18])->schema([
                             Select::make('item_id')->label('الصنف')
                                 ->options(fn (): array => Item::query()
                                     ->where('active', true)
@@ -67,7 +82,11 @@ class SalesQuotationForm
                                     ->pluck('name', 'id')
                                     ->all())
                                 ->searchable()->preload()->required()->distinct()->live()
-                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                ->afterStateUpdated(function (Set $set, Get $get, mixed $state, mixed $old): void {
+                                    if ((string) $state === (string) $old) {
+                                        return;
+                                    }
+
                                     $item = Item::query()->with('unit')->find($state);
 
                                     if ($item?->isStockItem() && (! $item->unit_id || ! $item->unit)) {
@@ -90,13 +109,16 @@ class SalesQuotationForm
                                     $set('unit_name', $item?->unit?->name);
                                     $set('item_code_state', $item?->code);
                                     $set('unit_price', $item?->sale_price ?? 0);
-                                })->columnSpan(['md' => 2, 'xl' => 4]),
+                                })->columnSpan(['md' => 2, 'xl' => 5]),
                             Hidden::make('item_code_state')->dehydrated(false),
                             Hidden::make('is_stock_item_state')->dehydrated(false),
                             Placeholder::make('item_code')->label('كود الصنف')
                                 ->content(fn (Get $get): string => $get('item_code_state') ?: (Item::find($get('item_id'))?->code ?? '—'))
                                 ->alignCenter()
-                                ->extraAttributes(self::readOnlyValueAttributes('octram-quotation-item-code-box', ltr: true))
+                                ->extraAttributes([
+                                    ...self::readOnlyValueAttributes('octram-quotation-item-code-box', ltr: true),
+                                    'style' => 'white-space:nowrap; min-width:110px;',
+                                ])
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes('octram-quotation-readonly-entry'))
                                 ->columnSpan(['xl' => 2]),
                             Hidden::make('unit_id')
@@ -111,16 +133,59 @@ class SalesQuotationForm
                                 ->columnSpan(['xl' => 1]),
                             self::decimal('quantity', 'الكمية', true)->default(1)->columnSpan(['xl' => 1]),
                             self::decimal('unit_price', 'سعر الوحدة')->default(0)->columnSpan(['xl' => 2]),
-                            self::decimal('discount_amount', 'الخصم')->default(0)->columnSpan(['xl' => 2]),
+                            Select::make('discount_type')
+                                ->label('نوع الخصم')
+                                ->options([
+                                    'value' => 'قيمة',
+                                    'percent' => 'نسبة %',
+                                ])
+                                ->default('value')
+                                ->native(false)
+                                ->live()
+                                ->extraAttributes([
+                                    'style' => 'min-width:120px; white-space:nowrap;',
+                                ])
+                                ->columnSpan(['xl' => 2]),
+
+                            TextInput::make('discount_value')
+                                ->label('الخصم')
+                                ->type('text')
+                                ->inputMode('decimal')
+                                ->default(0)
+                                ->rules(['numeric', 'gte:0'])
+                                ->required()
+                                ->live(onBlur: true)
+                                ->suffix(fn (Get $get): string => $get('discount_type') === 'percent'
+                                    ? '%'
+                                    : 'ج.م')
+                                ->extraInputAttributes([
+                                    'dir' => 'ltr',
+                                    'style' => 'text-align:center; min-width:90px;',
+                                ])
+                                ->columnSpan(['xl' => 2]),
+
+                            Toggle::make('tax_exempt')
+                                ->label('بدون ضريبة')
+                                ->default(false)
+                                ->live()
+                                ->columnSpan(['xl' => 3]),
                         ])->columnSpanFull(),
                         Grid::make(['default' => 1, 'sm' => 2, 'xl' => 12])->schema([
+                            Placeholder::make('discount_amount_display')
+                                ->label('إجمالي خصم البند')
+                                ->content(fn (Get $get): string => self::money(self::line($get)['discount']))
+                                ->extraAttributes(self::centeredValueAttributes('octram-quotation-summary-box octram-quotation-money-box'))
+                                ->extraEntryWrapperAttributes(self::centeredWrapperAttributes())
+                                ->alignCenter()
+                                ->columnSpan(['xl' => 2]),
+
                             Placeholder::make('tax_amount_display')
                                 ->label('الضريبة')
                                 ->content(fn (Get $get): string => self::money(self::line($get)['tax']))
                                 ->extraAttributes(self::centeredValueAttributes('octram-quotation-summary-box octram-quotation-money-box'))
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes())
                                 ->alignCenter()
-                                ->columnSpan(['xl' => 3]),
+                                ->columnSpan(['xl' => 2]),
                             Placeholder::make('line_total_display')
                                 ->label('الإجمالي')
                                 ->content(fn (Get $get): string => self::money(self::line($get)['total']))
@@ -137,7 +202,7 @@ class SalesQuotationForm
                                 ->extraAttributes(self::centeredValueAttributes('octram-quotation-summary-box octram-quotation-stock-box'))
                                 ->extraEntryWrapperAttributes(self::centeredWrapperAttributes())
                                 ->alignCenter()
-                                ->columnSpan(['xl' => 3]),
+                                ->columnSpan(['xl' => 2]),
                             Placeholder::make('total_balance')
                                 ->label('إجمالي الرصيد')
                                 ->content(fn (Get $get): string => $get('is_stock_item_state') === false
@@ -157,13 +222,22 @@ class SalesQuotationForm
                                 && (float) $get('quantity') > app(InventoryService::class)->warehouseBalance($get('../../warehouse_id'), $get('item_id')))
                             ->extraAttributes(['class' => 'text-warning-600 dark:text-warning-400'])
                             ->columnSpanFull(),
-                        Textarea::make('notes')->label('ملاحظات')->rows(2)->columnSpanFull(),
+                        Textarea::make('notes')->label('ملاحظات')->rows(1)->columnSpanFull(),
                     ])->defaultItems(1)->minItems(1)->addActionLabel('إضافة صنف')->columnSpanFull(),
                 ]),
             Section::make('الإجماليات')
                 ->description('ملخص مالي محسوب تلقائيًا ويُعاد احتسابه عند الحفظ.')
                 ->icon('heroicon-o-calculator')
                 ->schema([
+                    Toggle::make('exclude_totals')
+                        ->label('عدم احتساب الإجماليات')
+                        ->helperText(
+                            'عند التفعيل ستظهر جميع إجماليات عرض السعر بقيمة صفر، مع الاحتفاظ بتفاصيل وأسعار البنود.'
+                        )
+                        ->default(false)
+                        ->live()
+                        ->columnSpanFull(),
+
                     Grid::make(['default' => 1, 'md' => 4])->schema([
                         Placeholder::make('subtotal_display')->label('الإجمالي قبل الخصم')->content(fn (Get $get): string => self::money(self::totals($get)['subtotal'])),
                         Placeholder::make('discount_display')->label('إجمالي الخصم')->content(fn (Get $get): string => self::money(self::totals($get)['discount'])),
@@ -174,7 +248,17 @@ class SalesQuotationForm
                 ]),
             Section::make('الملاحظات والشروط')->description('تفاصيل إضافية تظهر مع عرض السعر.')->icon('heroicon-o-pencil-square')->schema([
                 Textarea::make('notes')->label('ملاحظات')->rows(3),
-                Textarea::make('terms_and_conditions')->label('الشروط والأحكام')->rows(4),
+                Textarea::make('terms_and_conditions')
+                    ->label('الشروط والأحكام')
+                    ->rows(6)
+                    ->default(
+                        fn (): ?string =>
+                            CompanySetting::current()
+                                ->default_sales_quotation_terms
+                    )
+                    ->helperText(
+                        'تُحمّل الشروط الافتراضية عند إنشاء عرض جديد، ويمكن تعديلها لهذا العرض فقط.'
+                    ),
             ])->columns(2)->collapsible(),
         ]);
     }
@@ -192,24 +276,98 @@ class SalesQuotationForm
 
     private static function line(Get $get): array
     {
-        $base = (float) $get('quantity') * (float) $get('unit_price');
-        $discount = min($base, max(0, (float) $get('discount_amount')));
-        $calculation = app(DocumentTaxCalculator::class)->calculate($base, $discount, TaxType::tryFrom((string) $get('../../tax_type')) ?? TaxType::None);
+        $quantity = max(0, (float) $get('quantity'));
+        $unitPrice = max(0, (float) $get('unit_price'));
+        $base = round($quantity * $unitPrice, 2);
 
-        return ['base' => $base, 'discount' => $discount, 'tax' => $calculation['tax_amount'], 'total' => $calculation['total']];
+        $discountType = (string) ($get('discount_type') ?: 'value');
+        $discountValue = max(0, (float) $get('discount_value'));
+
+        $discount = $discountType === 'percent'
+            ? round($base * min(100, $discountValue) / 100, 2)
+            : round(min($unitPrice, $discountValue) * $quantity, 2);
+
+        $discount = min($base, $discount);
+        $taxExempt = (bool) $get('tax_exempt');
+
+        if ($taxExempt) {
+            return [
+                'base' => $base,
+                'discount' => $discount,
+                'tax' => 0,
+                'total' => round($base - $discount, 2),
+            ];
+        }
+
+        $calculation = app(DocumentTaxCalculator::class)->calculate(
+            $base,
+            $discount,
+            TaxType::tryFrom((string) $get('../../tax_type')) ?? TaxType::None,
+        );
+
+        return [
+            'base' => $base,
+            'discount' => $discount,
+            'tax' => $calculation['tax_amount'],
+            'total' => $calculation['total'],
+        ];
     }
 
     private static function totals(Get $get): array
     {
-        $lines = collect($get('items') ?? [])->map(function (array $item) use ($get): array {
-            $base = (float) ($item['quantity'] ?? 0) * (float) ($item['unit_price'] ?? 0);
-            $discount = min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
-            $calc = app(DocumentTaxCalculator::class)->calculate($base, $discount, TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None);
+        if ((bool) $get('exclude_totals')) {
+            return [
+                'subtotal' => 0,
+                'discount' => 0,
+                'tax' => 0,
+                'total' => 0,
+            ];
+        }
 
-            return ['base' => $base, 'discount' => $discount, 'tax' => $calc['tax_amount'], 'total' => $calc['total']];
+        $lines = collect($get('items') ?? [])->map(function (array $item) use ($get): array {
+            $quantity = max(0, (float) ($item['quantity'] ?? 0));
+            $unitPrice = max(0, (float) ($item['unit_price'] ?? 0));
+            $base = round($quantity * $unitPrice, 2);
+
+            $discountType = (string) ($item['discount_type'] ?? 'value');
+            $discountValue = max(0, (float) ($item['discount_value'] ?? 0));
+
+            $discount = $discountType === 'percent'
+                ? round($base * min(100, $discountValue) / 100, 2)
+                : round(min($unitPrice, $discountValue) * $quantity, 2);
+
+            $discount = min($base, $discount);
+            $taxExempt = (bool) ($item['tax_exempt'] ?? false);
+
+            if ($taxExempt) {
+                return [
+                    'base' => $base,
+                    'discount' => $discount,
+                    'tax' => 0,
+                    'total' => round($base - $discount, 2),
+                ];
+            }
+
+            $calc = app(DocumentTaxCalculator::class)->calculate(
+                $base,
+                $discount,
+                TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None,
+            );
+
+            return [
+                'base' => $base,
+                'discount' => $discount,
+                'tax' => $calc['tax_amount'],
+                'total' => $calc['total'],
+            ];
         });
 
-        return ['subtotal' => $lines->sum('base'), 'discount' => $lines->sum('discount'), 'tax' => $lines->sum('tax'), 'total' => $lines->sum('total')];
+        return [
+            'subtotal' => round((float) $lines->sum('base'), 2),
+            'discount' => round((float) $lines->sum('discount'), 2),
+            'tax' => round((float) $lines->sum('tax'), 2),
+            'total' => round((float) $lines->sum('total'), 2),
+        ];
     }
 
     private static function money(float $amount): string

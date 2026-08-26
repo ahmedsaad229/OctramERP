@@ -25,6 +25,18 @@ class CustomersTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('contact_person')
+                    ->label('اسم المسؤول')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
+
+                TextColumn::make('contact_mobile')
+                    ->label('موبايل المسؤول')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 TextColumn::make('mobile')
                     ->label('الموبايل')
                     ->searchable(),

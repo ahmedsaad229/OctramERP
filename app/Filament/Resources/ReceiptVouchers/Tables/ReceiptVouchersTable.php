@@ -9,7 +9,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-
+use Filament\Actions\Action;
 class ReceiptVouchersTable
 {
     public static function configure(Table $table): Table
@@ -81,7 +81,21 @@ class ReceiptVouchersTable
                     ->options(PaymentMethod::options()),
             ])
             ->recordActions([
-                EditAction::make(),
-            ]);
+    EditAction::make()
+        ->label('تعديل')
+        ->icon('heroicon-o-pencil-square'),
+
+    Action::make('print')
+        ->label('طباعة')
+        ->icon('heroicon-o-printer')
+        ->color('gray')
+        ->url(
+            fn (ReceiptVoucher $record): string => route(
+                'cash-receipt-vouchers.print',
+                $record
+            )
+        )
+        ->openUrlInNewTab(),
+]);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PurchaseInvoices\Tables;
 
+
+use Filament\Actions\Action;
 use App\Enums\PaymentType;
 use App\Enums\TaxType;
 use App\Models\PurchaseInvoice;
@@ -110,7 +112,18 @@ class PurchaseInvoicesTable
             ])
             ->filters(self::filters())
             ->recordActions([
-                EditAction::make(),
+                                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (PurchaseInvoice $record): string => route(
+                            'purchase-invoices.print',
+                            $record
+                        )
+                    )
+                    ->openUrlInNewTab(),
+EditAction::make(),
             ]);
     }
 

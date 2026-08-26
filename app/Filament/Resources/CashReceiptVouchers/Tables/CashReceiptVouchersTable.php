@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CashReceiptVouchers\Tables;
 use App\Enums\PaymentMethod;
 use App\Models\ReceiptVoucher;
 use App\Support\ArabicMoney;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
@@ -48,6 +49,22 @@ class CashReceiptVouchersTable
                     ->when($data['to'] ?? null, fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date))),
                 SelectFilter::make('payment_method')->label('طريقة الاستلام')->options(PaymentMethod::options()),
             ])
-            ->recordActions([EditAction::make()]);
+            ->recordActions([
+                EditAction::make()
+                    ->label('تعديل')
+                    ->icon('heroicon-o-pencil-square'),
+
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (ReceiptVoucher $record): string => route(
+                            'cash-receipt-vouchers.print',
+                            $record
+                        )
+                    )
+                    ->openUrlInNewTab(),
+            ]);
     }
 }

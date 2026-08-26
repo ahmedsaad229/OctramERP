@@ -25,3 +25,44 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# ============================================================
+# OctramERP server / development exclusions
+# ============================================================
+
+# Server backups
+/backups/
+/storage/backups/
+
+# Database dumps
+*.sql
+*.sql.gz
+
+# Archives
+*.zip
+*.rar
+*.7z
+
+# Temporary backup files
+*.bak
+*.bak-*
+*.save
+*.save.*
+*.before-*
+*nano.save*
+*~
+
+# Server temporary / patch scripts
+/add-octram-full-report.php
+/cleanup-old-dashboard.php
+/fix-*.php
+/install-*.php
+/remove-*.php
+/restyle-*.php
+
+# Server error log
+/error_log
+
+# Review / temporary exports
+/*-review.txt
+/*-review-*.txt

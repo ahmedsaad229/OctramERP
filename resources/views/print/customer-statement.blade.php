@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>كشف حساب عميل - {{ $report['customer']->name }}</title>
-    @vite(['resources/css/app.css'])
     <style>
         @page { size: A4 portrait; margin: 10mm; }
         * { box-sizing: border-box; }
@@ -32,6 +31,366 @@
             .toolbar { display: none; }
         }
     </style>
+    @include('print.partials.report-style')
+<style>
+    /* CUSTOMER-STATEMENT-OCTRAM-V2 */
+
+    :root {
+        --primary: #123b67;
+        --primary-dark: #0d2f54;
+        --primary-soft: #edf5fc;
+        --border: #bfd0e2;
+        --text: #172033;
+        --muted: #64748b;
+    }
+
+    .statement {
+        width: min(210mm, calc(100% - 30px)) !important;
+        min-height: 281mm !important;
+        margin: 20px auto !important;
+        padding: 9mm !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-shadow: 0 8px 28px rgb(15 23 42 / 12%) !important;
+        font-size: 11px !important;
+    }
+
+    .toolbar {
+        display: flex !important;
+        justify-content: flex-start !important;
+        margin-bottom: 12px !important;
+    }
+
+    .print-button {
+        border: 0 !important;
+        border-radius: 7px !important;
+        padding: 9px 18px !important;
+        background: #2563eb !important;
+        color: #fff !important;
+        cursor: pointer !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 12px rgb(37 99 235 / 22%) !important;
+    }
+
+    .company-document-header,
+    .document-header {
+        margin-bottom: 18px !important;
+        padding: 15px 17px !important;
+        border: 1px solid var(--border) !important;
+        border-top: 5px solid var(--primary) !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+    }
+
+    .company-document-layout {
+        display: grid !important;
+        grid-template-columns:
+            minmax(190px, .8fr)
+            minmax(300px, 1.5fr)
+            minmax(135px, .65fr) !important;
+        align-items: center !important;
+        gap: 18px !important;
+        direction: rtl !important;
+    }
+
+    .company-document-details {
+        min-width: 0 !important;
+        text-align: right !important;
+    }
+
+    .company-document-title {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 0 8px !important;
+        padding: 8px 14px !important;
+        border-radius: 8px !important;
+        background: var(--primary) !important;
+        color: #fff !important;
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    .company-document-meta {
+        display: grid !important;
+        gap: 4px !important;
+    }
+
+    .company-document-meta > div {
+        display: grid !important;
+        grid-template-columns: 80px minmax(0, 1fr) !important;
+        gap: 7px !important;
+        align-items: center !important;
+    }
+
+    .company-document-meta span {
+        color: var(--muted) !important;
+        font-size: 10px !important;
+    }
+
+    .company-document-meta strong {
+        color: var(--text) !important;
+        font-size: 10.5px !important;
+    }
+
+    .company-document-company {
+        min-width: 0 !important;
+        text-align: center !important;
+    }
+
+    .company-document-company-name {
+        color: var(--primary) !important;
+        font-size: 19px !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+    }
+
+    .company-document-activity {
+        margin-top: 2px !important;
+        color: #475569 !important;
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+    }
+
+    .company-document-contact-lines {
+        margin-top: 6px !important;
+        color: #475569 !important;
+        font-size: 9px !important;
+        line-height: 1.55 !important;
+    }
+
+    .company-document-legal {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+    }
+
+    .company-document-logo-wrap {
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        justify-self: start !important;
+        width: 100% !important;
+        direction: ltr !important;
+    }
+
+    .company-document-logo {
+        width: auto !important;
+        max-width: 135px !important;
+        height: auto !important;
+        max-height: 82px !important;
+        object-fit: contain !important;
+    }
+
+    .info,
+    .totals {
+        display: grid !important;
+        gap: 10px !important;
+        margin: 14px 0 !important;
+    }
+
+    .info {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .totals {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .box {
+        min-height: 72px !important;
+        padding: 11px 13px !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        background: linear-gradient(180deg, #fff, #f8fbfe) !important;
+        box-shadow: 0 2px 7px rgb(15 23 42 / 5%) !important;
+    }
+
+    .label {
+        color: var(--muted) !important;
+        font-size: 10.5px !important;
+    }
+
+    .value {
+        margin-top: 5px !important;
+        color: var(--primary-dark) !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        table-layout: fixed !important;
+        overflow: hidden !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+    }
+
+    thead {
+        display: table-header-group !important;
+    }
+
+    th {
+        padding: 8px 6px !important;
+        border: 0 !important;
+        border-left: 1px solid #7796b5 !important;
+        background: var(--primary) !important;
+        color: #fff !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    td {
+        padding: 8px 6px !important;
+        border: 0 !important;
+        border-left: 1px solid #d7e1eb !important;
+        border-bottom: 1px solid #d7e1eb !important;
+        vertical-align: middle !important;
+    }
+
+    th:last-child,
+    td:last-child {
+        border-left: 0 !important;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: 0 !important;
+    }
+
+    tbody tr:nth-child(even) {
+        background: #f8fbfe !important;
+    }
+
+    tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    .money,
+    .date,
+    .reference {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    .totals:last-of-type .box:first-child {
+        border-color: #86b6e6 !important;
+        background: var(--primary-soft) !important;
+    }
+
+    .signatures {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 85px !important;
+        margin-top: 42px !important;
+        padding: 0 30px !important;
+        text-align: center !important;
+    }
+
+    .signatures > div {
+        min-height: 65px !important;
+        padding-top: 11px !important;
+        border-top: 1px solid #4b6075 !important;
+        color: var(--primary-dark) !important;
+        font-weight: 700 !important;
+    }
+
+    .footer {
+        display: flex !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        margin-top: 24px !important;
+        padding-top: 10px !important;
+        border-top: 1px solid var(--border) !important;
+        color: var(--muted) !important;
+        font-size: 10px !important;
+    }
+
+    @media screen and (max-width: 760px) {
+        .statement {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 15px !important;
+            box-shadow: none !important;
+            overflow-x: auto !important;
+        }
+
+        .company-document-layout,
+        .info,
+        .totals,
+        .signatures {
+            grid-template-columns: 1fr !important;
+        }
+
+        .company-document-logo-wrap {
+            justify-content: center !important;
+            justify-self: center !important;
+        }
+
+        .company-document-company-name {
+            white-space: normal !important;
+        }
+    }
+
+    @media print {
+        body {
+            background: #fff !important;
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+        }
+
+        .statement {
+            width: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .toolbar {
+            display: none !important;
+        }
+    }
+</style>
+<style>
+    /* CUSTOMER-STATEMENT-TITLE-CENTER-FIX-V2 */
+
+    .statement .company-document-details {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: center !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .statement .company-document-title {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        min-height: 48px !important;
+        margin: 0 0 9px 0 !important;
+        padding: 8px 10px !important;
+        text-align: center !important;
+        direction: rtl !important;
+        line-height: 1.25 !important;
+        white-space: nowrap !important;
+    }
+
+    .statement .company-document-meta {
+        width: 100% !important;
+        align-self: stretch !important;
+    }
+</style>
 </head>
 <body>
     <main class="statement">
@@ -97,3 +456,5 @@
     </main>
 </body>
 </html>
+
+

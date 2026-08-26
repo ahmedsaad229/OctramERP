@@ -39,6 +39,8 @@ class SalesInvoiceService
             $items = $this->normalizeItems($data['items'] ?? []);
             $this->validateWarehouseRequirement($data, $items);
             $this->applyTaxTotals($data, $items);
+            $this->applyServiceTaxDiscount($data, $items);
+            $this->applyOnePercentDiscount($data, $items);
             $this->validateAvailableStock((int) ($data['warehouse_id'] ?? 0), $items);
             unset($data['items'], $data['document_number']);
 
@@ -65,6 +67,8 @@ class SalesInvoiceService
             $items = $this->normalizeItems($data['items'] ?? []);
             $this->validateWarehouseRequirement($data, $items);
             $this->applyTaxTotals($data, $items);
+            $this->applyServiceTaxDiscount($data, $items);
+            $this->applyOnePercentDiscount($data, $items);
             $this->validateAvailableStock(
                 (int) ($data['warehouse_id'] ?? 0),
                 $items,
@@ -91,6 +95,7 @@ class SalesInvoiceService
 
             $this->inventoryService->deleteDocumentTransactions($invoice->document_number);
             $this->partyTransactionService->deleteDocumentTransaction($invoice);
+            app(\App\Services\JournalEntryService::class)->deleteForSource($invoice);
             app(CustomerPurchaseOrderService::class)->removeSalesInvoiceExecutions($invoice);
             $invoice->items()->delete();
 
@@ -143,6 +148,8 @@ class SalesInvoiceService
             $invoice->document_number,
             $invoice->notes,
         );
+
+        app(\App\Services\JournalEntryService::class)->postSalesInvoice($invoice);
 
         return $invoice->fresh(['items', 'customer', 'warehouse']);
     }
@@ -203,6 +210,7 @@ class SalesInvoiceService
                     'quantity' => 0.0,
                     'unit_price' => $unitPrice,
                     'discount_amount' => (float) ($item['discount_amount'] ?? 0),
+                    'tax_exempt' => (bool) ($item['tax_exempt'] ?? false),
                     'tax_amount' => (float) ($item['tax_amount'] ?? 0),
                     'line_total' => 0.0,
                     'notes' => $item['notes'] ?? null,
@@ -311,6 +319,81 @@ class SalesInvoiceService
     /**
      * @param  array<string, mixed>  $data
      */
+    /**
+     * خصم ضريبة خدمات 3% من صافي الفاتورة قبل ضريبة القيمة المضافة.
+     *
+     * @param array<string,mixed> $data
+     * @param array<int,array<string,mixed>> $items
+     */
+    /**
+     * خصم وإضافة 1% من صافي الفاتورة قبل ضريبة القيمة المضافة.
+     *
+     * @param array<string,mixed> $data
+     * @param array<int,array<string,mixed>> $items
+     */
+    private function applyOnePercentDiscount(array &$data, array $items): void
+    {
+        $enabled = (bool) ($data['one_percent_discount_enabled'] ?? false);
+
+        if (! $enabled) {
+            $data['one_percent_discount_enabled'] = false;
+            $data['one_percent_discount_amount'] = 0;
+
+            return;
+        }
+
+        $subtotal = (float) collect($items)->sum(
+            fn (array $item): float => (float) ($item['line_total'] ?? 0)
+        );
+
+        $invoiceDiscount = max(
+            0,
+            (float) ($data['discount_amount'] ?? 0)
+        );
+
+        $beforeVat = round(
+            max(0, $subtotal - $invoiceDiscount),
+            2
+        );
+
+        $data['one_percent_discount_enabled'] = true;
+        $data['one_percent_discount_amount'] = round(
+            $beforeVat * 0.01,
+            2
+        );
+    }
+
+    private function applyServiceTaxDiscount(array &$data, array $items): void
+    {
+        $enabled = (bool) ($data['service_tax_discount_enabled'] ?? false);
+
+        if (! $enabled) {
+            $data['service_tax_discount_enabled'] = false;
+            $data['service_tax_discount_amount'] = 0;
+            return;
+        }
+
+        $subtotal = (float) collect($items)->sum(
+            fn (array $item): float => (float) ($item['line_total'] ?? 0)
+        );
+
+        $invoiceDiscount = max(
+            0,
+            (float) ($data['discount_amount'] ?? 0)
+        );
+
+        $taxableBeforeVat = round(
+            max(0, $subtotal - $invoiceDiscount),
+            2
+        );
+
+        $data['service_tax_discount_enabled'] = true;
+        $data['service_tax_discount_amount'] = round(
+            $taxableBeforeVat * 0.03,
+            2
+        );
+    }
+
     private function validateElectronicInvoiceNumber(array $data): void
     {
         Validator::make(
@@ -325,20 +408,77 @@ class SalesInvoiceService
     }
 
     /** @param array<int, array<string, mixed>> $items */
-    private function applyTaxTotals(array &$data, array $items): void
+    private function applyTaxTotals(array &$data, array &$items): void
     {
         $taxType = TaxType::tryFrom((string) ($data['tax_type'] ?? TaxType::None->value));
 
         if (! $taxType) {
-            throw ValidationException::withMessages(['tax_type' => 'نوع الضريبة المحدد غير صالح.']);
+            throw ValidationException::withMessages([
+                'tax_type' => 'نوع الضريبة المحدد غير صالح.',
+            ]);
         }
 
-        $subtotal = (float) collect($items)->sum('line_total');
-        $discount = max(0, round((float) ($data['discount_amount'] ?? 0), 2));
-        $calculation = app(DocumentTaxCalculator::class)->calculate($subtotal, $discount, $taxType);
-        $data['discount_amount'] = $discount;
+        $subtotal = round((float) collect($items)->sum('line_total'), 2);
+
+        $lineDiscountTotal = round(
+            (float) collect($items)->sum(
+                fn (array $item): float => min(
+                    (float) $item['line_total'],
+                    max(0, (float) ($item['discount_amount'] ?? 0))
+                )
+            ),
+            2
+        );
+
+        // خصومات البنود القادمة من عرض السعر جزء من خصم الفاتورة.
+        // لو هناك خصم إضافي على رأس الفاتورة يتم توزيعه نسبياً على كل البنود،
+        // وبالتالي البند المعفى لا يدخل في وعاء الضريبة.
+        $discount = min(
+            $subtotal,
+            max(
+                $lineDiscountTotal,
+                max(0, round((float) ($data['discount_amount'] ?? 0), 2))
+            )
+        );
+
+        $additionalDiscount = max(0, $discount - $lineDiscountTotal);
+
+        $netBeforeAdditional = (float) collect($items)->sum(function (array $item): float {
+            $base = (float) $item['line_total'];
+            $lineDiscount = min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
+
+            return max(0, $base - $lineDiscount);
+        });
+
+        $taxTotal = 0.0;
+
+        foreach ($items as &$item) {
+            $base = (float) $item['line_total'];
+            $lineDiscount = min($base, max(0, (float) ($item['discount_amount'] ?? 0)));
+            $lineNet = max(0, $base - $lineDiscount);
+
+            $extraShare = ($additionalDiscount > 0 && $netBeforeAdditional > 0)
+                ? round($additionalDiscount * ($lineNet / $netBeforeAdditional), 2)
+                : 0.0;
+
+            $extraShare = min($lineNet, $extraShare);
+
+            $tax = (bool) ($item['tax_exempt'] ?? false)
+                ? 0.0
+                : (float) app(DocumentTaxCalculator::class)
+                    ->calculate($lineNet, $extraShare, $taxType)['tax_amount'];
+
+            $item['discount_amount'] = round($lineDiscount, 2);
+            $item['tax_exempt'] = (bool) ($item['tax_exempt'] ?? false);
+            $item['tax_amount'] = round($tax, 2);
+            $taxTotal += $tax;
+        }
+        unset($item);
+
+        $data['discount_amount'] = round($discount, 2);
         $data['tax_type'] = $taxType->value;
-        $data['tax_amount'] = $calculation['tax_amount'];
+        $data['tax_amount'] = round($taxTotal, 2);
+
         unset($data['total'], $data['subtotal']);
     }
 }

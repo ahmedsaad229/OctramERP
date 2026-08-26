@@ -23,7 +23,7 @@ class PurchaseInvoice extends BaseModel
     protected static string $documentType = DocumentNumberService::PURCHASE_INVOICE;
 
     protected $fillable = [
-        'code', 'supplier_id', 'supplier_purchase_order_id', 'invoice_number', 'invoice_date',
+        'code', 'supplier_id', 'supplier_purchase_order_id', 'supplier_document_type', 'invoice_number', 'invoice_date',
         'warehouse_id', 'payment_type', 'due_date', 'discount_amount', 'tax_type',
         'tax_amount', 'notes', 'posted',
     ];
@@ -71,11 +71,11 @@ class PurchaseInvoice extends BaseModel
             fn (PurchaseInvoiceItem $item): float => (float) $item->quantity * (float) $item->unit_cost,
         );
 
-        return app(DocumentTaxCalculator::class)->calculate(
-            $subtotal,
-            (float) $this->discount_amount,
-            $this->tax_type ?? TaxType::None,
-        )['total'];
+        return round(
+            max(0, $subtotal - (float) $this->discount_amount)
+            + (float) $this->tax_amount,
+            2
+        );
     }
 
     public function paidAmount(?int $excludingSupplierPaymentVoucherId = null): float

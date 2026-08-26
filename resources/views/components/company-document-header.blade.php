@@ -6,39 +6,112 @@
     'expiryDate' => null,
 ])
 
-<header {{ $attributes->class(['company-document-header flex flex-col gap-5 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10']) }}>
-    <div class="company-document-company flex min-w-0 items-center gap-4">
-        @if ($logoUrl = $settings->logoUrl())
-            <img
-                src="{{ $logoUrl }}"
-                alt="{{ $settings->commercialName() }}"
-                class="company-document-logo h-20 w-auto max-w-40 shrink-0 object-contain"
-            >
-        @endif
+<header {{ $attributes->class(['company-document-header']) }}>
+    <div class="company-document-layout">
 
-        <div class="min-w-0">
-            <div class="company-document-company-name text-lg font-bold text-gray-950 dark:text-white">
+        <section class="company-document-details">
+            <div class="company-document-title">
+                {{ $documentTitle }}
+            </div>
+
+            <div class="company-document-meta">
+                <div>
+                    <span>رقم المستند</span>
+                    <strong dir="ltr">{{ $documentNumber }}</strong>
+                </div>
+
+                <div>
+                    <span>التاريخ</span>
+                    <strong dir="ltr">{{ $documentDate }}</strong>
+                </div>
+
+                @if ($expiryDate)
+                    <div>
+                        <span>صالح حتى</span>
+                        <strong dir="ltr">{{ $expiryDate }}</strong>
+                    </div>
+                @endif
+            </div>
+        </section>
+
+        <section class="company-document-company">
+            <div class="company-document-company-name">
                 {{ $settings->commercialName() }}
             </div>
-            @unless (str_contains($settings->commercialName(), 'للمقاولات والتوريدات'))
-                <div class="company-document-activity mt-1 text-sm text-gray-500 dark:text-gray-400">
+
+            @unless (
+                str_contains(
+                    $settings->commercialName(),
+                    'للمقاولات والتوريدات'
+                )
+            )
+                <div class="company-document-activity">
                     للمقاولات والتوريدات
                 </div>
             @endunless
-        </div>
-    </div>
 
-    <div class="company-document-details">
-        <div class="company-document-title">{{ $documentTitle }}</div>
-        <dl class="grid shrink-0 grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt class="text-gray-500 dark:text-gray-400">رقم المستند</dt>
-        <dd class="font-semibold text-gray-950 dark:text-white" dir="ltr">{{ $documentNumber }}</dd>
-        <dt class="text-gray-500 dark:text-gray-400">التاريخ</dt>
-        <dd class="text-gray-950 dark:text-white" dir="ltr">{{ $documentDate }}</dd>
-        @if ($expiryDate)
-            <dt class="text-gray-500 dark:text-gray-400">صالح حتى</dt>
-            <dd class="text-gray-950 dark:text-white" dir="ltr">{{ $expiryDate }}</dd>
-        @endif
-        </dl>
+            <div class="company-document-contact-lines">
+                @if (filled($settings->address))
+                    <div>{{ $settings->address }}</div>
+                @endif
+
+                @if (filled($settings->phone) || filled($settings->mobile))
+                    <div dir="ltr">
+                        {{ collect([
+                            $settings->phone,
+                            $settings->mobile,
+                        ])->filter()->join(' - ') }}
+                    </div>
+                @endif
+
+                @if (filled($settings->email) || filled($settings->website))
+                    <div dir="ltr">
+                        {{ collect([
+                            $settings->email,
+                            $settings->website,
+                        ])->filter()->join(' - ') }}
+                    </div>
+                @endif
+
+                @if (
+                    filled($settings->commercial_registry)
+                    || filled($settings->tax_number)
+                )
+                    <div class="company-document-legal">
+                        @if (filled($settings->commercial_registry))
+                            <span>
+                                سجل تجاري:
+                                <b dir="ltr">
+                                    {{ $settings->commercial_registry }}
+                                </b>
+                            </span>
+                        @endif
+
+                        @if (filled($settings->tax_number))
+                            <span>
+                                رقم ضريبي:
+                                <b dir="ltr">
+                                    {{ $settings->tax_number }}
+                                </b>
+                            </span>
+                        @endif
+                    </div>
+                @endif
+            </div>
+        </section>
+
+        <section class="company-document-logo-wrap">
+            @if ($logoUrl = $settings->logoUrl())
+                <img
+                    src="{{ $logoUrl }}"
+                    alt="{{ $settings->commercialName() }}"
+                    class="company-document-logo"
+                >
+            @else
+                <div class="company-document-logo-placeholder">
+                    OCTRAM
+                </div>
+            @endif
+        </section>
     </div>
 </header>

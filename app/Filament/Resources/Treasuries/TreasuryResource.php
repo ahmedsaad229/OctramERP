@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Treasuries;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\Treasuries\Pages\CreateTreasury;
 use App\Filament\Resources\Treasuries\Pages\EditTreasury;
 use App\Filament\Resources\Treasuries\Pages\ListTreasuries;
@@ -9,13 +11,13 @@ use App\Filament\Resources\Treasuries\Schemas\TreasuryForm;
 use App\Filament\Resources\Treasuries\Tables\TreasuriesTable;
 use App\Models\Treasury;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class TreasuryResource extends Resource
+class TreasuryResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'treasuries';
     protected static ?string $model = Treasury::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
     protected static ?string $recordTitleAttribute = 'name';

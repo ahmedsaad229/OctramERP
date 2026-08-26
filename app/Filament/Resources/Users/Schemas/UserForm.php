@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Models\Role;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -27,6 +29,17 @@ class UserForm
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
 
+                        TextInput::make('mobile')
+                            ->label('رقم الموبايل')
+                            ->tel()
+                            ->maxLength(50)
+                            ->placeholder('01xxxxxxxxx'),
+
+                        TextInput::make('job_title')
+                            ->label('المسمى الوظيفي')
+                            ->maxLength(150)
+                            ->placeholder('مثال: مسؤول مبيعات'),
+
                         TextInput::make('password')
                             ->label('كلمة المرور')
                             ->password()
@@ -43,6 +56,14 @@ class UserForm
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->minLength(8)
                             ->dehydrated(false),
+
+                        Select::make('role_id')
+                            ->label('الدور الوظيفي')
+                            ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->helperText('مدير النظام لا يحتاج إلى دور؛ لديه كل الصلاحيات تلقائيًا.'),
 
                         Toggle::make('is_active')
                             ->label('نشط')

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PurchaseInvoices;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\PurchaseInvoices\Pages\CreatePurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\EditPurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\ListPurchaseInvoices;
@@ -10,13 +12,13 @@ use App\Filament\Resources\PurchaseInvoices\Schemas\PurchaseInvoiceForm;
 use App\Filament\Resources\PurchaseInvoices\Tables\PurchaseInvoicesTable;
 use App\Models\PurchaseInvoice;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class PurchaseInvoiceResource extends Resource
+class PurchaseInvoiceResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'purchase_invoices';
     protected static ?string $model = PurchaseInvoice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;

@@ -7,6 +7,8 @@ use App\Filament\Resources\PurchaseInvoices\PurchaseInvoiceResource;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\Customer;
 use App\Models\DueObligation;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Support\ArabicMoney;
@@ -68,6 +70,34 @@ class DueObligationsTable
                     ->label('قيمة الفاتورة')
                     ->formatStateUsing(fn (mixed $state): string => ArabicMoney::format($state))
                     ->alignRight(),
+                TextColumn::make('paid_amount')
+                    ->label('المسدد')
+                    ->state(fn (DueObligation $record): float => self::paidAmount($record))
+                    ->formatStateUsing(fn (mixed $state): string => ArabicMoney::format($state ?? 0))
+                    ->color(fn (mixed $state): string => (float) $state > 0 ? 'success' : 'gray')
+                    ->alignRight(),
+                TextColumn::make('remaining_amount')
+                    ->label('المتبقي')
+                    ->state(fn (DueObligation $record): float => self::remainingAmount($record))
+                    ->formatStateUsing(fn (mixed $state): string => ArabicMoney::format($state ?? 0))
+                    ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'success')
+                    ->weight('bold')
+                    ->alignRight(),
+                TextColumn::make('payment_status')
+                    ->label('حالة السداد')
+                    ->state(fn (DueObligation $record): string => self::paymentStatus($record))
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'paid' => 'مدفوع بالكامل',
+                        'partially_paid' => 'مدفوع جزئيًا',
+                        default => 'غير مدفوع',
+                    })
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'paid' => 'success',
+                        'partially_paid' => 'warning',
+                        default => 'danger',
+                    })
+                    ->alignCenter(),
                 TextColumn::make('payment_type')
                     ->label('نوع التعامل')
                     ->formatStateUsing(fn (string $state): string => PaymentType::from($state)->label())
@@ -108,6 +138,46 @@ class DueObligationsTable
             ])
             ->recordActionsColumnLabel('عرض الفاتورة')
             ->recordActionsAlignment('center');
+    }
+
+
+    private static function paidAmount(DueObligation $record): float
+    {
+        if ($record->payment_type === PaymentType::Cash->value) {
+            return round((float) $record->total_amount, 2);
+        }
+
+        if ($record->source_type === DueObligation::TYPE_SALE) {
+            $invoice = SalesInvoice::query()
+                ->with('receiptAllocations')
+                ->find($record->source_id);
+
+            return round((float) ($invoice?->receiptAllocations->sum('amount') ?? 0), 2);
+        }
+
+        $invoice = PurchaseInvoice::query()
+            ->with('supplierPaymentAllocations')
+            ->find($record->source_id);
+
+        return round((float) ($invoice?->supplierPaymentAllocations->sum('amount') ?? 0), 2);
+    }
+
+    private static function remainingAmount(DueObligation $record): float
+    {
+        return round(max(0, (float) $record->total_amount - self::paidAmount($record)), 2);
+    }
+
+    private static function paymentStatus(DueObligation $record): string
+    {
+        $total = round((float) $record->total_amount, 2);
+        $paid = self::paidAmount($record);
+        $remaining = round(max(0, $total - $paid), 2);
+
+        if ($paid <= 0) {
+            return 'unpaid';
+        }
+
+        return $remaining > 0.009 ? 'partially_paid' : 'paid';
     }
 
     private static function daysLabel(DueObligation $record): string

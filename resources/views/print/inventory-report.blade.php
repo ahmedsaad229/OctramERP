@@ -24,6 +24,7 @@
         .empty { padding: 40px; text-align: center; color: #6b7280; }
         @media print { .toolbar { display: none; } }
     </style>
+    @include('print.partials.report-style')
 </head>
 <body>
     <div class="toolbar"><button type="button" onclick="window.print()">طباعة / حفظ PDF</button></div>

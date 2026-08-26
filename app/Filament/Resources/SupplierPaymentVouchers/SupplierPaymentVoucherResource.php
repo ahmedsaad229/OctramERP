@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SupplierPaymentVouchers;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\SupplierPaymentVouchers\Pages\CreateSupplierPaymentVoucher;
 use App\Filament\Resources\SupplierPaymentVouchers\Pages\EditSupplierPaymentVoucher;
 use App\Filament\Resources\SupplierPaymentVouchers\Pages\ListSupplierPaymentVouchers;
@@ -9,13 +11,13 @@ use App\Filament\Resources\SupplierPaymentVouchers\Schemas\SupplierPaymentVouche
 use App\Filament\Resources\SupplierPaymentVouchers\Tables\SupplierPaymentVouchersTable;
 use App\Models\SupplierPaymentVoucher;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
-class SupplierPaymentVoucherResource extends Resource
+class SupplierPaymentVoucherResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'supplier_payment_vouchers';
     protected static ?string $model = SupplierPaymentVoucher::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUpTray;

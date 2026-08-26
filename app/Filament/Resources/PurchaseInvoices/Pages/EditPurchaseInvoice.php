@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PurchaseInvoices\Pages;
 
+
+use Filament\Actions\Action;
 use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\PurchaseInvoices\PurchaseInvoiceResource;
 use App\Models\PurchaseInvoice;
@@ -63,7 +65,18 @@ class EditPurchaseInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ProtectedDeleteAction::make()
+                        Action::make('print')
+                ->label('طباعة / حفظ PDF')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(
+                    fn (PurchaseInvoice $record): string => route(
+                        'purchase-invoices.print',
+                        $record
+                    )
+                )
+                ->openUrlInNewTab(),
+ProtectedDeleteAction::make()
                 ->using(fn (PurchaseInvoice $record): bool => app(PurchaseInvoiceService::class)->delete($record)),
         ];
     }

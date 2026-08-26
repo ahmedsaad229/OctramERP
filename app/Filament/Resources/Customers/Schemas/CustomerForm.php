@@ -30,6 +30,24 @@ class CustomerForm
                             ->label('اسم العميل')
                             ->required(),
 
+                        TextInput::make('contact_person')
+                            ->label('اسم المسؤول لدى العميل')
+                            ->maxLength(255),
+
+                        TextInput::make('contact_job_title')
+                            ->label('المسمى الوظيفي للمسؤول')
+                            ->maxLength(255),
+
+                        TextInput::make('contact_mobile')
+                            ->label('موبايل المسؤول')
+                            ->tel()
+                            ->maxLength(50),
+
+                        TextInput::make('contact_email')
+                            ->label('البريد الإلكتروني للمسؤول')
+                            ->email()
+                            ->maxLength(255),
+
                         TextInput::make('mobile')
                             ->label('الموبايل')
                             ->tel(),

@@ -19,6 +19,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -33,6 +34,7 @@ class PurchaseInvoiceForm
 
         return $schema->components([
             Section::make('بيانات الفاتورة')
+                ->extraAttributes(['class' => 'purchase-invoice-compact'])
                 ->schema([
                     Grid::make([
                         'default' => 1,
@@ -50,10 +52,36 @@ class PurchaseInvoiceForm
                             ->required()
                             ->default(now()),
 
-                        TextInput::make('invoice_number')
-                            ->label('رقم فاتورة لدى المورد')
+                        Select::make('supplier_document_type')
+                            ->label('نوع مستند المورد')
+                            ->options([
+                                'price_statement' => 'بيان أسعار',
+                                'invoice' => 'فاتورة',
+                            ])
+                            ->default('invoice')
                             ->required()
-                            ->maxLength(255),
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                if ($state !== 'invoice') {
+                                    $set('invoice_number', null);
+                                }
+                            }),
+
+                        TextInput::make('invoice_number')
+                            ->label('رقم فاتورة المورد')
+                            ->placeholder('اكتب رقم فاتورة المورد')
+                            ->maxLength(255)
+                            ->visible(fn (Get $get): bool => $get('supplier_document_type') === 'invoice')
+                            ->required(fn (Get $get): bool => $get('supplier_document_type') === 'invoice')
+                            ->dehydrateStateUsing(function (mixed $state, Get $get): ?string {
+                                if ($get('supplier_document_type') !== 'invoice') {
+                                    return null;
+                                }
+
+                                $value = trim((string) ($state ?? ''));
+
+                                return ($value === '' || $value === '0') ? null : $value;
+                            }),
 
                         Select::make('payment_type')
                             ->label('نوع التعامل')
@@ -146,7 +174,7 @@ class PurchaseInvoiceForm
                             Grid::make([
                                 'default' => 1,
                                 'md' => 6,
-                                'xl' => 13,
+                                'xl' => 12,
                             ])->schema([
                                 Hidden::make('supplier_purchase_order_item_id'),
                                 Hidden::make('item_code')->dehydrated(false),
@@ -179,14 +207,16 @@ class PurchaseInvoiceForm
                                     ->content(fn (Get $get): string => $get('item_code') ?: '—')
                                     ->extraAttributes(DocumentFieldPresentation::itemCode())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
-                                    ->alignCenter(),
+                                    ->alignCenter()
+                                    ->columnSpan(['md' => 2, 'xl' => 2]),
 
                                 Placeholder::make('unit_name_display')
                                     ->label('الوحدة')
                                     ->content(fn (Get $get): string => $get('unit_name') ?: '—')
                                     ->extraAttributes(DocumentFieldPresentation::unit())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
-                                    ->alignCenter(),
+                                    ->alignCenter()
+                                    ->columnSpan(['md' => 2, 'xl' => 1]),
 
                                 Placeholder::make('ordered_quantity_display')
                                     ->label('الكمية بأمر التوريد')
@@ -194,7 +224,8 @@ class PurchaseInvoiceForm
                                     ->extraAttributes(DocumentFieldPresentation::stock())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
-                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
+                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id')))
+                                    ->columnSpan(['md' => 2, 'xl' => 2]),
 
                                 Placeholder::make('previously_invoiced_quantity_display')
                                     ->label('الكمية المفوترة سابقًا')
@@ -202,7 +233,8 @@ class PurchaseInvoiceForm
                                     ->extraAttributes(DocumentFieldPresentation::stock())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
-                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
+                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id')))
+                                    ->columnSpan(['md' => 2, 'xl' => 3]),
 
                                 Placeholder::make('remaining_quantity_display')
                                     ->label('المتبقي قبل هذه الفاتورة')
@@ -210,7 +242,8 @@ class PurchaseInvoiceForm
                                     ->extraAttributes(DocumentFieldPresentation::stock())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
-                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
+                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id')))
+                                    ->columnSpan(['md' => 2, 'xl' => 3]),
 
                                 Placeholder::make('warehouse_balance')
                                     ->label('رصيد المخزن')
@@ -223,7 +256,8 @@ class PurchaseInvoiceForm
                                     ->extraAttributes(DocumentFieldPresentation::stock())
                                     ->extraEntryWrapperAttributes(DocumentFieldPresentation::wrapper())
                                     ->alignCenter()
-                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id'))),
+                                    ->visible(fn (Get $get): bool => filled($get('supplier_purchase_order_item_id')))
+                                    ->columnSpan(['md' => 2, 'xl' => 2]),
 
                                 TextInput::make('quantity')
                                     ->label('كمية الفاتورة')
@@ -272,6 +306,17 @@ class PurchaseInvoiceForm
                                         'default' => 1,
                                         'md' => 3,
                                         'xl' => 3,
+                                    ]),
+
+                                Toggle::make('tax_exempt')
+                                    ->label('استثناء من الضريبة')
+                                    ->helperText('فعّل فقط إذا كان هذا البند غير خاضع للضريبة.')
+                                    ->default(false)
+                                    ->live()
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 3,
+                                        'xl' => 2,
                                     ]),
 
                                 Placeholder::make('total')
@@ -344,11 +389,47 @@ class PurchaseInvoiceForm
     /** @return array{taxable_amount: float, tax_amount: float, total: float} */
     private static function calculation(Get $get): array
     {
-        return app(DocumentTaxCalculator::class)->calculate(
-            self::subtotal($get),
-            (float) $get('discount_amount'),
-            TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None,
+        $items = collect($get('items') ?? []);
+        $taxType = TaxType::tryFrom((string) $get('tax_type')) ?? TaxType::None;
+        $subtotal = self::subtotal($get);
+        $discount = min($subtotal, max(0, (float) $get('discount_amount')));
+
+        $netBeforeDiscount = (float) $items->sum(
+            fn (array $item): float => max(
+                0,
+                (float) ($item['quantity'] ?? 0) * (float) ($item['unit_cost'] ?? 0)
+            )
         );
+
+        $tax = (float) $items->sum(function (array $item) use (
+            $taxType,
+            $discount,
+            $netBeforeDiscount
+        ): float {
+            if ((bool) ($item['tax_exempt'] ?? false)) {
+                return 0.0;
+            }
+
+            $base = max(
+                0,
+                (float) ($item['quantity'] ?? 0) * (float) ($item['unit_cost'] ?? 0)
+            );
+
+            $discountShare = ($discount > 0 && $netBeforeDiscount > 0)
+                ? round($discount * ($base / $netBeforeDiscount), 2)
+                : 0.0;
+
+            return (float) app(DocumentTaxCalculator::class)
+                ->calculate($base, min($base, $discountShare), $taxType)['tax_amount'];
+        });
+
+        $taxableAmount = round(max(0, $subtotal - $discount), 2);
+
+        return [
+            'taxable_amount' => $taxableAmount,
+            'tax_amount' => round($tax, 2),
+            'total' => round($taxableAmount + $tax, 2),
+        ];
     }
 
     private static function money(float $amount): string

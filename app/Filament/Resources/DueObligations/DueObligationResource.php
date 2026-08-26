@@ -2,18 +2,20 @@
 
 namespace App\Filament\Resources\DueObligations;
 
+use App\Filament\Resources\Core\BaseResource;
+
 use App\Filament\Resources\DueObligations\Pages\ListDueObligations;
 use App\Filament\Resources\DueObligations\Tables\DueObligationsTable;
 use App\Models\DueObligation;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class DueObligationResource extends Resource
+class DueObligationResource extends BaseResource
 {
+    protected static ?string $permissionKey = 'due_obligations';
     protected static ?string $model = DueObligation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

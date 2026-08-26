@@ -47,12 +47,28 @@ class EditReceiptVoucher extends EditRecord
     }
 
     protected function getHeaderActions(): array
-    {
-        return [
-            ProtectedDeleteAction::make()
-                ->modalHeading('حذف سند قبض العميل')
-                ->successNotificationTitle('تم حذف سند قبض العميل بنجاح.')
-                ->using(fn (ReceiptVoucher $record): bool => app(ReceiptVoucherService::class)->delete($record)),
-        ];
-    }
+{
+    return [
+        Action::make('print')
+            ->label('طباعة')
+            ->icon('heroicon-o-printer')
+            ->color('gray')
+            ->url(
+                fn (ReceiptVoucher $record): string => route(
+                    'cash-receipt-vouchers.print',
+                    $record
+                )
+            )
+            ->openUrlInNewTab(),
+
+        ProtectedDeleteAction::make()
+            ->modalHeading('حذف سند قبض العميل')
+            ->successNotificationTitle('تم حذف سند قبض العميل بنجاح.')
+            ->using(
+                fn (ReceiptVoucher $record): bool => app(
+                    ReceiptVoucherService::class
+                )->delete($record)
+            ),
+    ];
+}
 }

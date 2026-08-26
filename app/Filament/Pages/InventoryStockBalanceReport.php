@@ -63,4 +63,14 @@ class InventoryStockBalanceReport extends Page
     {
         return app(InventoryReportService::class)->balances($filters);
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('inventory_stock_balance_report.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('inventory_stock_balance_report.view') === true;
+    }
 }

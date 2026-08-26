@@ -37,6 +37,7 @@ class SupplierPaymentVoucher extends BaseModel
         'treasury_id',
         'payment_method',
         'payment_reason',
+        'expense_account_id',
         'beneficiary_name',
         'reference_number',
         'amount',

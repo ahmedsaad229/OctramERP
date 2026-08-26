@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CashPaymentVouchers\Schemas;
 
+use App\Models\Account;
+
 use App\Enums\PaymentMethod;
 use App\Models\SupplierPaymentVoucher;
 use App\Support\QuantityFormatter;
@@ -55,10 +57,31 @@ class CashPaymentVoucherForm
                         ->required(fn (Get $get): bool => $get('payment_type') === SupplierPaymentVoucher::TYPE_SUPPLIER),
                     TextInput::make('beneficiary_name')->label('اسم المستفيد أو الجهة')->maxLength(255)
                         ->visible(fn (Get $get): bool => $get('payment_type') === SupplierPaymentVoucher::TYPE_GENERAL),
-                    Select::make('payment_reason')->label('سبب الصرف')
-                        ->options(SupplierPaymentVoucher::paymentReasonOptions())->native(false)
-                        ->visible(fn (Get $get): bool => $get('payment_type') === SupplierPaymentVoucher::TYPE_GENERAL)
-                        ->required(fn (Get $get): bool => $get('payment_type') === SupplierPaymentVoucher::TYPE_GENERAL),
+                    Select::make('expense_account_id')
+                        ->label('سبب الصرف / الحساب')
+                        ->options(
+                            fn (): array => Account::query()
+                                ->posting()
+                                ->orderBy('code')
+                                ->get()
+                                ->mapWithKeys(
+                                    fn (Account $account): array => [
+                                        $account->getKey() => $account->displayName(),
+                                    ]
+                                )
+                                ->all()
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->visible(
+                            fn (Get $get): bool =>
+                                $get('payment_type') === SupplierPaymentVoucher::TYPE_GENERAL
+                        )
+                        ->required(
+                            fn (Get $get): bool =>
+                                $get('payment_type') === SupplierPaymentVoucher::TYPE_GENERAL
+                        ),
                     TextInput::make('reference_number')->label('الرقم المرجعي')->maxLength(255),
                 ])->columnSpanFull(),
                 Textarea::make('notes')->label('البيان')->rows(3)->maxLength(2000)->columnSpanFull(),

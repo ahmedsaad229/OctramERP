@@ -66,6 +66,7 @@ class SalesQuotationService
             'customer_id' => ['required', 'exists:customers,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'tax_type' => ['required'],
+            'exclude_totals' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
         ], [
             'valid_until.after_or_equal' => 'تاريخ انتهاء الصلاحية يجب ألا يسبق تاريخ عرض السعر.',
@@ -81,8 +82,31 @@ class SalesQuotationService
             $unitId = filled($row['unit_id'] ?? null) ? (int) $row['unit_id'] : null;
             $quantity = (float) ($row['quantity'] ?? 0);
             $unitPrice = (float) ($row['unit_price'] ?? 0);
-            $discount = round((float) ($row['discount_amount'] ?? 0), 2);
+            $discountType = (string) ($row['discount_type'] ?? 'value');
+            $discountValue = max(0, round((float) ($row['discount_value'] ?? 0), 2));
             $base = round($quantity * $unitPrice, 2);
+
+            if (! in_array($discountType, ['value', 'percent'], true)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.discount_type" => 'نوع الخصم المحدد غير صالح.',
+                ]);
+            }
+
+            if ($discountType === 'percent' && $discountValue > 100) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.discount_value" => 'نسبة الخصم لا يمكن أن تتجاوز 100%.',
+                ]);
+            }
+
+            if ($discountType === 'value' && $discountValue > $unitPrice) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.discount_value" => 'قيمة الخصم للوحدة لا يمكن أن تتجاوز سعر الوحدة.',
+                ]);
+            }
+
+            $discount = $discountType === 'percent'
+                ? round($base * $discountValue / 100, 2)
+                : round($discountValue * $quantity, 2);
 
             if (! $item || ! $item->active) {
                 throw ValidationException::withMessages(["items.{$index}.item_id" => 'البند المحدد غير موجود أو غير نشط.']);
@@ -97,25 +121,54 @@ class SalesQuotationService
                 throw ValidationException::withMessages(["items.{$index}" => 'بيانات الكمية أو السعر أو الخصم غير صحيحة.']);
             }
 
-            $tax = app(DocumentTaxCalculator::class)->calculate($base, $discount, $taxType)['tax_amount'];
+            $taxExempt = (bool) ($row['tax_exempt'] ?? false);
+
+            $tax = $taxExempt
+                ? 0.0
+                : (float) app(DocumentTaxCalculator::class)
+                    ->calculate($base, $discount, $taxType)['tax_amount'];
 
             return [
                 'item_id' => $item->getKey(),
                 'unit_id' => $item->isNonStockItem() ? $unitId : (int) $item->unit_id,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
+                'discount_type' => $discountType,
+                'discount_value' => $discountValue,
                 'discount_amount' => $discount,
-                'tax_amount' => $tax,
+                'tax_exempt' => $taxExempt,
+                'tax_amount' => round($tax, 2),
                 'line_total' => round($base - $discount + $tax, 2),
                 'notes' => $row['notes'] ?? null,
             ];
         })->all();
 
+        $excludeTotals = (bool) ($data['exclude_totals'] ?? false);
+
         $data['tax_type'] = $taxType->value;
-        $data['subtotal'] = round((float) collect($items)->sum(fn (array $item): float => $item['quantity'] * $item['unit_price']), 2);
-        $data['discount_amount'] = round((float) collect($items)->sum('discount_amount'), 2);
-        $data['tax_amount'] = round((float) collect($items)->sum('tax_amount'), 2);
-        $data['total_amount'] = round((float) collect($items)->sum('line_total'), 2);
+        $data['exclude_totals'] = $excludeTotals;
+
+        $data['subtotal'] = $excludeTotals
+            ? 0
+            : round(
+                (float) collect($items)->sum(
+                    fn (array $item): float =>
+                        $item['quantity'] * $item['unit_price']
+                ),
+                2
+            );
+
+        $data['discount_amount'] = $excludeTotals
+            ? 0
+            : round((float) collect($items)->sum('discount_amount'), 2);
+
+        $data['tax_amount'] = $excludeTotals
+            ? 0
+            : round((float) collect($items)->sum('tax_amount'), 2);
+
+        $data['total_amount'] = $excludeTotals
+            ? 0
+            : round((float) collect($items)->sum('line_total'), 2);
         $data['created_by'] ??= auth()->id();
         unset($data['items'], $data['quotation_number']);
 

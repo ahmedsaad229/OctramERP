@@ -83,6 +83,18 @@ class EditSalesInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('print')
+                ->label('طباعة الفاتورة')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->url(
+                    fn (): string => route(
+                        'sales-invoices.print',
+                        $this->getRecord()
+                    )
+                )
+                ->openUrlInNewTab(),
+
             ProtectedDeleteAction::make()
                 ->using(fn (SalesInvoice $record): bool => app(SalesInvoiceService::class)->delete($record)),
         ];

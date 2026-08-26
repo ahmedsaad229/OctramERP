@@ -69,4 +69,14 @@ class InventoryMovementReport extends Page
     {
         return app(InventoryReportService::class)->movements($filters);
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('inventory_movement_report.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('inventory_movement_report.view') === true;
+    }
 }

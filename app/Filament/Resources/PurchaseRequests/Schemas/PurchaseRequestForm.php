@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\PurchaseRequests\Schemas;
 
 use App\Models\Item;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestItem;
 use App\Services\Inventory\InventoryService;
 use App\Support\DocumentFieldPresentation;
 use App\Support\QuantityFormatter;
@@ -153,6 +155,8 @@ class PurchaseRequestForm
                         ->label('الأصناف المطلوبة')
                         ->schema([
                             Grid::make(['default' => 1, 'md' => 2, 'xl' => 12])->schema([
+                                Hidden::make('id')
+                                    ->dehydrated(false),
                                 Select::make('item_id')
                                     ->label('الصنف')
                                     ->options(fn (): array => Item::query()->where('active', true)->orderBy('name')->pluck('name', 'id')->all())
@@ -245,6 +249,25 @@ class PurchaseRequestForm
                                         ))
                                     ->extraAttributes(['style' => 'overflow-wrap: anywhere;'])
                                     ->columnSpan(['md' => 2, 'xl' => 3]),
+                                Hidden::make('purchase_followup_html')
+                                    ->dehydrated(false),
+
+                                Placeholder::make('purchase_followup')
+                                    ->label('متابعة الشراء')
+                                    ->content(
+                                        fn (Get $get): HtmlString =>
+                                            new HtmlString(
+                                                (string) ($get('purchase_followup_html') ?: '—')
+                                            )
+                                    )
+                                    ->visible(
+                                        fn (Get $get): bool =>
+                                            filled($get('purchase_followup_html'))
+                                    )
+                                    ->columnSpan([
+                                        'md' => 2,
+                                        'xl' => 12,
+                                    ]),
                                 TextInput::make('notes')
                                     ->label('ملاحظات')
                                     ->columnSpan(fn (Get $get): array => [

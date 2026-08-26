@@ -95,4 +95,14 @@ class CustomerPurchaseOrderMonitoring extends Page
             'view' => $this->activeView,
         ], fn ($value): bool => filled($value)));
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('customer_purchase_order_monitoring.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('customer_purchase_order_monitoring.view') === true;
+    }
 }

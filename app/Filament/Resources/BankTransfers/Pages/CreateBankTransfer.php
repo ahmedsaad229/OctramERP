@@ -1,0 +1,2 @@
+<?php
+namespace App\Filament\Resources\BankTransfers\Pages; use App\Filament\Resources\BankTransfers\BankTransferResource; use App\Services\BankTransferService; use Filament\Resources\Pages\CreateRecord; class CreateBankTransfer extends CreateRecord { protected static string $resource=BankTransferResource::class; protected function handleRecordCreation(array $data):\Illuminate\Database\Eloquent\Model{return app(BankTransferService::class)->create($data);} }

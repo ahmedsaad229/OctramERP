@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PaymentMethod;
+use App\Models\Account;
 use App\Models\PartyTransaction;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
@@ -134,17 +135,28 @@ class SupplierPaymentVoucherService
 
         if ($type === SupplierPaymentVoucher::TYPE_GENERAL) {
             $data['supplier_id'] = null;
+            $data['payment_reason'] = null;
 
-            if (! array_key_exists(
-                (string) ($data['payment_reason'] ?? ''),
-                SupplierPaymentVoucher::paymentReasonOptions(),
-            )) {
+            $expenseAccountId = (int) (
+                $data['expense_account_id'] ?? 0
+            );
+
+            $expenseAccount = Account::query()
+                ->posting()
+                ->find($expenseAccountId);
+
+            if (! $expenseAccount) {
                 throw ValidationException::withMessages([
-                    'data.payment_reason' => 'يجب اختيار سبب الصرف.',
+                    'data.expense_account_id' =>
+                        'يجب اختيار حساب صالح من دليل الحسابات.',
                 ]);
             }
+
+            $data['expense_account_id'] =
+                $expenseAccount->getKey();
         } else {
             $data['payment_reason'] = null;
+            $data['expense_account_id'] = null;
             $data['beneficiary_name'] = null;
         }
 
@@ -244,6 +256,8 @@ class SupplierPaymentVoucherService
             $voucher->created_by,
         );
 
+        app(JournalEntryService::class)->postSupplierPaymentVoucher($voucher);
+
         if ($voucher->isSupplierPayment()) {
             $this->partyTransactionService->replaceDocumentTransaction(
                 $voucher->supplier,
@@ -262,6 +276,7 @@ class SupplierPaymentVoucherService
     {
         $this->treasuryTransactionService->deleteForSource($voucher);
         $this->partyTransactionService->deleteDocumentTransaction($voucher);
+        app(JournalEntryService::class)->deleteForSource($voucher);
     }
 
     /**

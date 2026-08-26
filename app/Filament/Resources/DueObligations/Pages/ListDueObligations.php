@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\DueObligations\Pages;
 
+
+use Filament\Actions\Action;
 use App\Filament\Resources\DueObligations\DueObligationResource;
 use App\Filament\Resources\DueObligations\Widgets\DueObligationStats;
 use App\Models\DueObligation;
@@ -48,5 +50,17 @@ class ListDueObligations extends ListRecords
             ->where('source_type', $type)
             ->where('source_id', $sourceId)
             ->first();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('print')
+                ->label('طباعة الاستحقاقات')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(fn (): string => route('due-obligations.print'))
+                ->openUrlInNewTab(),
+        ];
     }
 }

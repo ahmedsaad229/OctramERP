@@ -52,6 +52,10 @@ class SalesQuotationInfolist
                             }),
                         TextEntry::make('quotation_date')->label('تاريخ عرض السعر')->date('d/m/Y'),
                         TextEntry::make('valid_until')->label('صالح حتى')->date('d/m/Y')->placeholder('غير محدد'),
+                        TextEntry::make('salesResponsible.name')
+                            ->label('مسؤول المبيعات')
+                            ->icon('heroicon-o-user-circle')
+                            ->placeholder('—'),
                         TextEntry::make('creator.name')->label('أُنشئ بواسطة')->placeholder('—'),
                     ]),
                 ]),

@@ -59,4 +59,14 @@ class LowStockReport extends Page
     {
         return app(InventoryReportService::class)->lowStock($filters);
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('low_stock_report.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('low_stock_report.view') === true;
+    }
 }

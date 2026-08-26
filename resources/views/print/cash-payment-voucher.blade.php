@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>سند صرف نقدية {{ $voucher->document_number }}</title>
-    @vite(['resources/css/app.css'])
     <style>
         @page { size: A4 portrait; margin: 12mm; }
         * { box-sizing: border-box; }

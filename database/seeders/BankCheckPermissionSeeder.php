@@ -1,0 +1,3 @@
+<?php
+namespace Database\Seeders; use App\Models\Role; use Illuminate\Database\Seeder;
+class BankCheckPermissionSeeder extends Seeder { public function run():void { $manage=['bank_checks.view','bank_checks.create','bank_checks.edit']; foreach(['مدير عام','الحسابات'] as $name){$r=Role::query()->where('name',$name)->first();if(!$r)continue;$r->update(['permissions'=>array_values(array_unique([...(array)($r->permissions??[]),...$manage]))]);} $r=Role::query()->where('name','مشاهدة فقط')->first();if($r)$r->update(['permissions'=>array_values(array_unique([...(array)($r->permissions??[]),'bank_checks.view']))]); } }

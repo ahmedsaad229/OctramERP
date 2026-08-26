@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\Items\Schemas;
 
+use App\Models\Item;
+use App\Support\ItemNameNormalizer;
+
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -27,7 +31,55 @@ class ItemForm
 
                         TextInput::make('name')
                             ->label('اسم الصنف')
-                            ->required(),
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->rules([
+                                function (?Item $record) {
+                                    return function (string $attribute, mixed $value, \Closure $fail) use ($record): void {
+                                        $normalized = ItemNameNormalizer::normalize($value);
+
+                                        if ($normalized === '') {
+                                            return;
+                                        }
+
+                                        $duplicate = Item::query()
+                                            ->where('name_normalized', $normalized)
+                                            ->when(
+                                                $record,
+                                                fn ($query) => $query->whereKeyNot($record->getKey()),
+                                            )
+                                            ->first(['id', 'code', 'name']);
+
+                                        if ($duplicate) {
+                                            $fail("هذا الصنف مسجل بالفعل بالكود {$duplicate->code}: {$duplicate->name}");
+                                        }
+                                    };
+                                },
+                            ])
+                            ->afterStateUpdated(function (mixed $state, ?Item $record): void {
+                                $normalized = ItemNameNormalizer::normalize($state);
+
+                                if ($normalized === '') {
+                                    return;
+                                }
+
+                                $duplicate = Item::query()
+                                    ->where('name_normalized', $normalized)
+                                    ->when(
+                                        $record,
+                                        fn ($query) => $query->whereKeyNot($record->getKey()),
+                                    )
+                                    ->first(['id', 'code', 'name']);
+
+                                if ($duplicate) {
+                                    Notification::make()
+                                        ->title('الصنف مسجل بالفعل')
+                                        ->body("الكود: {$duplicate->code} — {$duplicate->name}")
+                                        ->warning()
+                                        ->send();
+                                }
+                            }),
 
                         TextInput::make('name_en')
                             ->label('الاسم بالإنجليزية'),

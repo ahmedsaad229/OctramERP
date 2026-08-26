@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Compact purchase invoice header only */
+.purchase-invoice-compact .fi-section-content {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
+
+.purchase-invoice-compact .fi-sc-grid {
+    row-gap: 0.65rem !important;
+}
+
+.purchase-invoice-compact .fi-fo-field-wrp {
+    gap: 0.25rem !important;
+}
+
+.purchase-invoice-compact .fi-section-header {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.65rem !important;
+}
+

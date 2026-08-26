@@ -26,6 +26,23 @@ class UsersTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('mobile')
+                    ->label('الموبايل')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->copyable(),
+
+                TextColumn::make('job_title')
+                    ->label('المسمى الوظيفي')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
+
+                TextColumn::make('role.name')
+                    ->label('الدور')
+                    ->badge()
+                    ->placeholder('بدون دور'),
+
                 IconColumn::make('is_active')
                     ->label('نشط')
                     ->boolean()

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
+use App\Models\CustomerPurchaseOrder;
+use App\Services\CustomerPurchaseOrderConversionService;
 use App\Services\Inventory\SalesInvoiceService;
 use App\Services\SalesQuotationConversionService;
 use Filament\Actions\Action;
@@ -22,14 +24,84 @@ class CreateSalesInvoice extends CreateRecord
 
     protected function afterFill(): void
     {
-        $quotationId = request()->integer('sales_quotation');
-        if (! $quotationId) {
+        $customerPurchaseOrderId = request()->integer(
+            'customer_purchase_order'
+        );
+
+        if ($customerPurchaseOrderId) {
+            $this->fillFromCustomerPurchaseOrder(
+                $customerPurchaseOrderId
+            );
+
             return;
         }
+
+        $salesQuotationId = request()->integer('sales_quotation');
+
+        if ($salesQuotationId) {
+            $this->fillFromSalesQuotation($salesQuotationId);
+        }
+    }
+
+    private function fillFromCustomerPurchaseOrder(
+        int $customerPurchaseOrderId
+    ): void {
+        $customerPurchaseOrder = CustomerPurchaseOrder::query()
+            ->findOrFail($customerPurchaseOrderId);
+
+        $conversionService = app(
+            CustomerPurchaseOrderConversionService::class
+        );
+
+        $orderLines = collect(
+            $conversionService->lines($customerPurchaseOrderId)
+        )
+            ->map(function (array $line): array {
+                return [
+                    ...$line,
+                    'selected' => true,
+                    'import_quantity' => $line['remaining_quantity'] ?? 0,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $invoiceItems = $conversionService->invoiceItems($orderLines);
+
         $this->data = [
             ...$this->data,
-            'sales_quotation_id' => $quotationId,
-            ...app(SalesQuotationConversionService::class)->payload($quotationId),
+
+            /*
+             * نلغي الربط المباشر بعرض السعر عند التحويل من أمر التوريد،
+             * لأن المستند المصدر هنا هو أمر التوريد.
+             */
+            'sales_quotation_id' => null,
+
+            'customer_purchase_order_id' => $customerPurchaseOrder->getKey(),
+            'customer_id' => $customerPurchaseOrder->customer_id,
+
+            /*
+             * تظهر البنود في قسم الاستيراد، ويتم تحديد جميع البنود
+             * المتبقية بصورة تلقائية.
+             */
+            'order_import_lines' => $orderLines,
+
+            /*
+             * تُضاف الكميات المتبقية مباشرة إلى أصناف الفاتورة،
+             * ويمكن للمستخدم تعديل الكمية قبل الحفظ لتنفيذ فاتورة جزئية.
+             */
+            'items' => $invoiceItems,
+        ];
+    }
+
+    private function fillFromSalesQuotation(int $salesQuotationId): void
+    {
+        $this->data = [
+            ...$this->data,
+            'sales_quotation_id' => $salesQuotationId,
+            ...app(SalesQuotationConversionService::class)->payload(
+                $salesQuotationId
+            ),
         ];
     }
 
@@ -38,7 +110,11 @@ class CreateSalesInvoice extends CreateRecord
         try {
             return app(SalesInvoiceService::class)->create($data);
         } catch (ValidationException $exception) {
-            if (! collect($exception->errors())->flatten()->contains(self::INSUFFICIENT_STOCK_MESSAGE)) {
+            if (
+                ! collect($exception->errors())
+                    ->flatten()
+                    ->contains(self::INSUFFICIENT_STOCK_MESSAGE)
+            ) {
                 throw $exception;
             }
 

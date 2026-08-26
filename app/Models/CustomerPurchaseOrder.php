@@ -23,21 +23,38 @@ class CustomerPurchaseOrder extends BaseModel
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
-        'document_number', 'customer_order_number', 'customer_id', 'order_date',
-        'received_date', 'required_delivery_date', 'actual_completion_date',
-        'delivery_location', 'project_name', 'contact_person', 'status',
-        'execution_percentage', 'notes',
+        'document_number',
+        'customer_order_number',
+        'customer_id',
+        'sales_quotation_id',
+        'order_date',
+        'received_date',
+        'required_delivery_date',
+        'actual_completion_date',
+        'delivery_location',
+        'project_name',
+        'contact_person',
+        'status',
+        'execution_percentage',
+        'notes',
     ];
 
     protected $casts = [
-        'order_date' => 'date', 'received_date' => 'date',
-        'required_delivery_date' => 'date', 'actual_completion_date' => 'date',
+        'order_date' => 'date',
+        'received_date' => 'date',
+        'required_delivery_date' => 'date',
+        'actual_completion_date' => 'date',
         'execution_percentage' => 'decimal:2',
     ];
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function salesQuotation(): BelongsTo
+    {
+        return $this->belongsTo(SalesQuotation::class);
     }
 
     public function items(): HasMany
@@ -69,15 +86,21 @@ class CustomerPurchaseOrder extends BaseModel
     public static function statusOptions(): array
     {
         return [
-            self::STATUS_NEW => 'جديد', self::STATUS_IN_PROGRESS => 'قيد التنفيذ',
-            self::STATUS_PARTIAL => 'منفذ جزئيًا', self::STATUS_COMPLETED => 'منفذ بالكامل',
-            self::STATUS_SUSPENDED => 'متوقف', self::STATUS_CANCELLED => 'ملغي',
+            self::STATUS_NEW => 'جديد',
+            self::STATUS_IN_PROGRESS => 'قيد التنفيذ',
+            self::STATUS_PARTIAL => 'منفذ جزئيًا',
+            self::STATUS_COMPLETED => 'منفذ بالكامل',
+            self::STATUS_SUSPENDED => 'متوقف',
+            self::STATUS_CANCELLED => 'ملغي',
         ];
     }
 
     public function isDelayed(): bool
     {
         return $this->required_delivery_date?->isPast()
-            && ! in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED], true);
+            && ! in_array($this->status, [
+                self::STATUS_COMPLETED,
+                self::STATUS_CANCELLED,
+            ], true);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesQuotations;
 
+use App\Filament\Resources\Core\BaseResource;
 use App\Filament\Resources\SalesQuotations\Pages\CreateSalesQuotation;
 use App\Filament\Resources\SalesQuotations\Pages\EditSalesQuotation;
 use App\Filament\Resources\SalesQuotations\Pages\ListSalesQuotations;
@@ -11,14 +12,15 @@ use App\Filament\Resources\SalesQuotations\Schemas\SalesQuotationInfolist;
 use App\Filament\Resources\SalesQuotations\Tables\SalesQuotationsTable;
 use App\Models\SalesQuotation;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class SalesQuotationResource extends Resource
+class SalesQuotationResource extends BaseResource
 {
+    protected static string $permissionPrefix = 'sales_quotations';
+
     protected static ?string $model = SalesQuotation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

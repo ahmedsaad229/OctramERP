@@ -15,6 +15,7 @@ class SalesInvoiceItem extends BaseModel
         'quantity',
         'unit_price',
         'discount_amount',
+        'tax_exempt',
         'tax_amount',
         'line_total',
         'notes',
@@ -24,6 +25,7 @@ class SalesInvoiceItem extends BaseModel
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'tax_exempt' => 'boolean',
         'tax_amount' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];

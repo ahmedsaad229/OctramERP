@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PurchaseRequests\Tables;
 
+
+use Filament\Actions\Action;
 use App\Models\PurchaseRequest;
 use App\Support\QuantityFormatter;
 use Filament\Actions\EditAction;
@@ -116,7 +118,18 @@ class PurchaseRequestsTable
                         });
                     }),
             ])
-            ->recordActions([EditAction::make()])
+            ->recordActions([                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (PurchaseRequest $record): string => route(
+                            'purchase-requests.print',
+                            $record
+                        )
+                    )
+                    ->openUrlInNewTab(),
+EditAction::make()])
             ->emptyStateHeading('لا توجد طلبات شراء');
     }
 }

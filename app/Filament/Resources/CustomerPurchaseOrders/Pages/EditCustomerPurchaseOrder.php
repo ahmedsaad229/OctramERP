@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CustomerPurchaseOrders\Pages;
 
 use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\CustomerPurchaseOrders\CustomerPurchaseOrderResource;
+use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Models\CustomerPurchaseOrder;
 use App\Services\CustomerPurchaseOrderService;
 use Filament\Actions\Action;
@@ -18,13 +19,43 @@ class EditCustomerPurchaseOrder extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $record = $this->getRecord()->load(['items.unit', 'followUps', 'attachments']);
-        $data['items'] = $record->items->map(fn ($item): array => [
-            ...$item->only(['id', 'item_id', 'unit_id', 'ordered_quantity', 'executed_quantity', 'remaining_quantity', 'unit_price', 'description', 'notes']),
-            'unit_name' => $item->unit?->name,
-        ])->all();
-        $data['followUps'] = $record->followUps->map(fn ($row): array => $row->only(['follow_up_date', 'event_type', 'note']))->all();
-        $data['attachments'] = $record->attachments->map(fn ($row): array => $row->only(['file_path', 'original_name']))->all();
+        $record = $this->getRecord()->load([
+            'items.unit',
+            'followUps',
+            'attachments',
+        ]);
+
+        $data['items'] = $record->items
+            ->map(fn ($item): array => [
+                ...$item->only([
+                    'id',
+                    'item_id',
+                    'unit_id',
+                    'ordered_quantity',
+                    'executed_quantity',
+                    'remaining_quantity',
+                    'unit_price',
+                    'description',
+                    'notes',
+                ]),
+                'unit_name' => $item->unit?->name,
+            ])
+            ->all();
+
+        $data['followUps'] = $record->followUps
+            ->map(fn ($row): array => $row->only([
+                'follow_up_date',
+                'event_type',
+                'note',
+            ]))
+            ->all();
+
+        $data['attachments'] = $record->attachments
+            ->map(fn ($row): array => $row->only([
+                'file_path',
+                'original_name',
+            ]))
+            ->all();
 
         return $data;
     }
@@ -37,8 +68,39 @@ class EditCustomerPurchaseOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('print')->label('طباعة')->icon('heroicon-o-printer')->url(fn (CustomerPurchaseOrder $record) => route('customer-purchase-orders.print', $record))->openUrlInNewTab(),
-            ProtectedDeleteAction::make()->using(fn (CustomerPurchaseOrder $record) => app(CustomerPurchaseOrderService::class)->delete($record)),
+            Action::make('convert_to_sales_invoice')
+                ->label('تحويل إلى فاتورة بيع')
+                ->icon('heroicon-o-document-currency-pound')
+                ->color('success')
+                ->visible(
+                    fn (CustomerPurchaseOrder $record): bool => $record
+                        ->items()
+                        ->where('remaining_quantity', '>', 0)
+                        ->exists()
+                )
+                ->url(
+                    fn (CustomerPurchaseOrder $record): string => CreateSalesInvoice::getUrl([
+                        'customer_purchase_order' => $record->getKey(),
+                    ])
+                ),
+
+            Action::make('print')
+                ->label('طباعة')
+                ->icon('heroicon-o-printer')
+                ->url(
+                    fn (CustomerPurchaseOrder $record): string => route(
+                        'customer-purchase-orders.print',
+                        $record
+                    )
+                )
+                ->openUrlInNewTab(),
+
+            ProtectedDeleteAction::make()
+                ->using(
+                    fn (CustomerPurchaseOrder $record) => app(
+                        CustomerPurchaseOrderService::class
+                    )->delete($record)
+                ),
         ];
     }
 }

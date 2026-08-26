@@ -1,0 +1,2 @@
+<?php
+namespace App\Filament\Resources\BankChecks\Pages; use App\Filament\Resources\BankChecks\BankCheckResource; use Filament\Actions\CreateAction; use Filament\Resources\Pages\ListRecords; class ListBankChecks extends ListRecords { protected static string $resource=BankCheckResource::class; protected function getHeaderActions():array{return[CreateAction::make()];} }

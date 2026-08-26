@@ -23,7 +23,10 @@ class GoodsReceiptItem extends BaseModel
 
     public function voucher(): BelongsTo
     {
-        return $this->belongsTo(GoodsReceiptVoucher::class);
+        return $this->belongsTo(
+            GoodsReceiptVoucher::class,
+            "goods_receipt_voucher_id"
+        );
     }
 
     public function item(): BelongsTo

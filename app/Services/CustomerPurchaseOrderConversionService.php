@@ -21,7 +21,7 @@ class CustomerPurchaseOrderConversionService
                 $query->where(function ($eligible): void {
                     $eligible->whereNotIn('status', [CustomerPurchaseOrder::STATUS_CANCELLED, CustomerPurchaseOrder::STATUS_COMPLETED])
                         ->whereHas('items', fn ($items) => $items->where('remaining_quantity', '>', 0));
-                })->when($currentId, fn ($query) => $query->orWhereKey($currentId));
+                })->when($currentId, fn ($query) => $query->orWhere("id", $currentId));
             })
             ->orderByDesc('order_date')->get()->mapWithKeys(fn ($order) => [$order->id => trim("{$order->document_number} — {$order->customer_order_number}", ' —')])->all();
     }
@@ -43,7 +43,10 @@ class CustomerPurchaseOrderConversionService
                 'unit_name' => $line->unit?->name, 'ordered_quantity' => (float) $line->ordered_quantity,
                 'executed_quantity' => (float) $line->executed_quantity - (float) ($current[$line->id] ?? 0),
                 'remaining_quantity' => $remaining, 'import_quantity' => $remaining,
-                'unit_price' => (float) ($line->unit_price ?? 0), 'tax_rate' => (float) ($line->tax_rate ?? 0),
+                'unit_price' => (float) ($line->unit_price ?? 0),
+                'discount_amount' => (float) ($line->discount_amount ?? 0),
+                'tax_exempt' => (bool) ($line->tax_exempt ?? false),
+                'tax_rate' => (float) ($line->tax_rate ?? 0),
                 'description' => $line->description,
             ];
         })->filter(fn (array $line): bool => $line['remaining_quantity'] > 0)->values()->all();
@@ -71,8 +74,20 @@ class CustomerPurchaseOrderConversionService
             return [
                 'customer_purchase_order_item_id' => $line['customer_purchase_order_item_id'],
                 'item_id' => $line['item_id'], 'unit_id' => $line['unit_id'],
-                'quantity' => $quantity, 'unit_price' => (float) ($line['unit_price'] ?? 0),
-                'discount_amount' => 0, 'tax_amount' => 0, 'notes' => $line['description'] ?? null,
+                'quantity' => $quantity,
+                'unit_price' => (float) ($line['unit_price'] ?? 0),
+                'discount_amount' => round(
+                    (float) ($line['discount_amount'] ?? 0)
+                    * (
+                        (float) ($line['ordered_quantity'] ?? 0) > 0
+                            ? $quantity / (float) $line['ordered_quantity']
+                            : 1
+                    ),
+                    2
+                ),
+                'tax_exempt' => (bool) ($line['tax_exempt'] ?? false),
+                'tax_amount' => 0,
+                'notes' => $line['description'] ?? null,
             ];
         })->values()->all();
     }
