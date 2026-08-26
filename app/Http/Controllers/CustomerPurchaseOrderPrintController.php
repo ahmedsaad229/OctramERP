@@ -12,7 +12,7 @@ class CustomerPurchaseOrderPrintController extends Controller
 {
     public function __invoke(CustomerPurchaseOrder $customerPurchaseOrder): View
     {
-        abort_unless(CustomerPurchaseOrderResource::canEdit($customerPurchaseOrder), 403);
+        abort_unless(auth()->user()?->hasPermission('customer_purchase_orders.view'), 403);
 
         return view('print.customer-purchase-order', [
             'order' => $customerPurchaseOrder->load(['customer', 'items.item', 'items.unit', 'attachments']),

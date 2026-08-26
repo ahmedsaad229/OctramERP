@@ -6,6 +6,7 @@ use App\Filament\Resources\Core\BaseResource;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\CreateCustomerPurchaseOrder;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\EditCustomerPurchaseOrder;
 use App\Filament\Resources\CustomerPurchaseOrders\Pages\ListCustomerPurchaseOrders;
+use App\Filament\Resources\CustomerPurchaseOrders\Pages\ViewCustomerPurchaseOrder;
 use App\Filament\Resources\CustomerPurchaseOrders\Schemas\CustomerPurchaseOrderForm;
 use App\Filament\Resources\CustomerPurchaseOrders\Tables\CustomerPurchaseOrdersTable;
 use App\Models\CustomerPurchaseOrder;
@@ -15,7 +16,7 @@ use Filament\Tables\Table;
 
 class CustomerPurchaseOrderResource extends BaseResource
 {
-    protected static string $permissionPrefix = 'customer_purchase_orders';
+    protected static ?string $permissionKey = 'customer_purchase_orders';
 
     protected static ?string $model = CustomerPurchaseOrder::class;
 
@@ -45,6 +46,11 @@ class CustomerPurchaseOrderResource extends BaseResource
 
     public static function getPages(): array
     {
-        return ['index' => ListCustomerPurchaseOrders::route('/'), 'create' => CreateCustomerPurchaseOrder::route('/create'), 'edit' => EditCustomerPurchaseOrder::route('/{record}/edit')];
+        return [
+            'index' => ListCustomerPurchaseOrders::route('/'),
+            'create' => CreateCustomerPurchaseOrder::route('/create'),
+            'view' => ViewCustomerPurchaseOrder::route('/{record}'),
+            'edit' => EditCustomerPurchaseOrder::route('/{record}/edit'),
+        ];
     }
 }

@@ -7,6 +7,7 @@ use App\Filament\Resources\Core\BaseResource;
 use App\Filament\Resources\CashReceiptVouchers\Pages\CreateCashReceiptVoucher;
 use App\Filament\Resources\CashReceiptVouchers\Pages\EditCashReceiptVoucher;
 use App\Filament\Resources\CashReceiptVouchers\Pages\ListCashReceiptVouchers;
+use App\Filament\Resources\CashReceiptVouchers\Pages\ViewCashReceiptVoucher;
 use App\Filament\Resources\CashReceiptVouchers\Schemas\CashReceiptVoucherForm;
 use App\Filament\Resources\CashReceiptVouchers\Tables\CashReceiptVouchersTable;
 use App\Models\ReceiptVoucher;
@@ -49,6 +50,7 @@ class CashReceiptVoucherResource extends BaseResource
         return [
             'index' => ListCashReceiptVouchers::route('/'),
             'create' => CreateCashReceiptVoucher::route('/create'),
+            'view' => ViewCashReceiptVoucher::route('/{record}'),
             'edit' => EditCashReceiptVoucher::route('/{record}/edit'),
         ];
     }

@@ -7,6 +7,7 @@ use App\Models\ReceiptVoucher;
 use App\Support\ArabicMoney;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -50,6 +51,10 @@ class CashReceiptVouchersTable
                 SelectFilter::make('payment_method')->label('طريقة الاستلام')->options(PaymentMethod::options()),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label('عرض')
+                    ->icon('heroicon-o-eye'),
+
                 EditAction::make()
                     ->label('تعديل')
                     ->icon('heroicon-o-pencil-square'),

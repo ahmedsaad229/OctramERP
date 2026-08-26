@@ -142,76 +142,76 @@ Route::get(
 Route::get(
     '/admin/octram/{octramEntry}/print',
     \App\Http\Controllers\OctramEntryPrintController::class
-)->middleware(['auth'])->name('octram.print');
+)->middleware(['auth', 'permission:octram.print'])->name('octram.print');
 
 Route::get(
     '/admin/octram/report/print-all',
     \App\Http\Controllers\OctramEntriesReportController::class
-)->middleware(['auth'])->name('octram.print-all');
+)->middleware(['auth', 'permission:octram.print'])->name('octram.print-all');
 
 Route::get(
     '/admin/cash-advances/{cashAdvance}/print',
     \App\Http\Controllers\CashAdvancePrintController::class
-)->middleware(['auth'])->name('cash-advances.print');
+)->middleware(['auth', 'permission:cash-advances.print'])->name('cash-advances.print');
 
 
 Route::get(
     '/admin/purchase-invoices/export/excel',
     [\App\Http\Controllers\PurchaseInvoicesExportController::class, 'excel']
-)->middleware(['auth'])->name('purchase-invoices.export-excel');
+)->middleware(['auth', 'permission:purchase_invoices.view'])->name('purchase-invoices.export-excel');
 
 Route::get(
     '/admin/purchase-invoices/export/pdf',
     [\App\Http\Controllers\PurchaseInvoicesExportController::class, 'pdf']
-)->middleware(['auth'])->name('purchase-invoices.export-pdf');
+)->middleware(['auth', 'permission:purchase_invoices.view'])->name('purchase-invoices.export-pdf');
 
 
 Route::get(
     '/admin/purchase-invoices/report/detailed',
     [\App\Http\Controllers\PurchaseInvoicesExportController::class, 'detailed']
-)->middleware(['auth'])->name('purchase-invoices.detailed-report');
+)->middleware(['auth', 'permission:purchase_invoices.view'])->name('purchase-invoices.detailed-report');
 
 
 Route::get(
     '/admin/sales-invoices/export/pdf',
     [\App\Http\Controllers\SalesInvoicesExportController::class, 'pdf']
-)->middleware(['auth'])->name('sales-invoices.export-pdf');
+)->middleware(['auth', 'permission:sales_invoices.view'])->name('sales-invoices.export-pdf');
 
 Route::get(
     '/admin/sales-invoices/report/detailed',
     [\App\Http\Controllers\SalesInvoicesExportController::class, 'detailed']
-)->middleware(['auth'])->name('sales-invoices.detailed-report');
+)->middleware(['auth', 'permission:sales_invoices.view'])->name('sales-invoices.detailed-report');
 
 
 Route::get(
     '/admin/sales-invoices/export/excel',
     [\App\Http\Controllers\SalesInvoicesExportController::class, 'excel']
-)->middleware(['auth'])->name('sales-invoices.export-excel');
+)->middleware(['auth', 'permission:sales_invoices.view'])->name('sales-invoices.export-excel');
 
 
 Route::get(
     '/admin/purchase-item-sales-tracking/print',
     [\App\Http\Controllers\PurchaseItemSalesTrackingExportController::class, 'print']
-)->middleware(['auth'])->name('purchase-item-sales-tracking.print');
+)->middleware(['auth', 'permission:purchase-item-sales-tracking.print'])->name('purchase-item-sales-tracking.print');
 
 Route::get(
     '/admin/purchase-item-sales-tracking/excel',
     [\App\Http\Controllers\PurchaseItemSalesTrackingExportController::class, 'excel']
-)->middleware(['auth'])->name('purchase-item-sales-tracking.excel');
+)->middleware(['auth', 'permission:purchase-item-sales-tracking.print'])->name('purchase-item-sales-tracking.excel');
 
 
 Route::get(
     '/admin/sales-quotations/export/excel',
     [\App\Http\Controllers\SalesQuotationsExportController::class, 'excel']
-)->middleware(['auth'])->name('sales-quotations.export-excel');
+)->middleware(['auth', 'permission:sales_quotations.view'])->name('sales-quotations.export-excel');
 
 Route::get(
     '/admin/sales-quotations/export/pdf',
     [\App\Http\Controllers\SalesQuotationsExportController::class, 'pdf']
-)->middleware(['auth'])->name('sales-quotations.export-pdf');
+)->middleware(['auth', 'permission:sales_quotations.view'])->name('sales-quotations.export-pdf');
 
 Route::get(
     '/admin/sales-quotations/report/detailed',
     [\App\Http\Controllers\SalesQuotationsExportController::class, 'detailed']
-)->middleware(['auth'])->name('sales-quotations.detailed-report');
+)->middleware(['auth', 'permission:sales_quotations.view'])->name('sales-quotations.detailed-report');
 

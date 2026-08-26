@@ -11,7 +11,7 @@ class CashPaymentVoucherPrintController extends Controller
 {
     public function __invoke(SupplierPaymentVoucher $supplierPaymentVoucher): View
     {
-        abort_unless(CashPaymentVoucherResource::canEdit($supplierPaymentVoucher), 403);
+        abort_unless(auth()->user()?->hasPermission('cash_payment_vouchers.view'), 403);
         $supplierPaymentVoucher->load(['supplier', 'treasury']);
 
         return view('print.cash-payment-voucher', [
