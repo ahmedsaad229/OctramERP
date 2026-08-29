@@ -100,14 +100,20 @@ class CustomerForm
                     ->label('ملاحظات')
                     ->rows(3)
                     ->columnSpanFull(),
-                Section::make('أوامر التوريد')->schema([
-                    View::make('filament.resources.customers.purchase-orders')
-                        ->viewData(fn (?Customer $record): array => [
-                            'summary' => $record
-                                ? app(CustomerPurchaseOrderMonitoringService::class)->customerSummary($record->getKey())
-                                : null,
-                        ]),
-                ])->visible(fn (?Customer $record): bool => filled($record))->columnSpanFull(),
+                Section::make('أوامر التوريد')
+                    ->description('اضغط لعرض أوامر التوريد وحركات العميل')
+                    ->schema([
+                        View::make('filament.resources.customers.purchase-orders')
+                            ->viewData(fn (?Customer $record): array => [
+                                'summary' => $record
+                                    ? app(CustomerPurchaseOrderMonitoringService::class)->customerSummary($record->getKey())
+                                    : null,
+                            ]),
+                    ])
+                    ->collapsible()
+                    ->collapsed()
+                    ->visible(fn (?Customer $record): bool => filled($record))
+                    ->columnSpanFull(),
             ]);
     }
 }
