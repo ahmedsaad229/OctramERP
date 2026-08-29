@@ -14,7 +14,20 @@ class ProtectedDeleteAction extends DeleteAction
     {
         parent::setUp();
 
+        /*
+         * Keep Filament's normal resource authorization active.
+         * The action must not be visible or executable when the
+         * current resource denies deletion for the record.
+         */
+        $this->authorize('delete');
+
         $this->action(function (): void {
+            /*
+             * Defense in depth:
+             * re-run authorization when the action is actually executed.
+             */
+            $this->authorize('delete');
+
             try {
                 $result = $this->process(
                     fn (Model $record): bool => app(DocumentDeletionService::class)->delete($record),
