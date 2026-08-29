@@ -10,6 +10,11 @@ class CashAdvancePrintController extends Controller
 {
     public function __invoke(CashAdvance $cashAdvance): View
     {
+        abort_unless(
+            auth()->user()?->hasPermission('cash_advances.print') === true,
+            403
+        );
+
         $cashAdvance->load('settlements');
 
         return view('print.cash-advance', [

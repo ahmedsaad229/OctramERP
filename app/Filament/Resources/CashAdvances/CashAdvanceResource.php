@@ -15,6 +15,35 @@ use Filament\Tables\Table;
 
 class CashAdvanceResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.view') === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.view') === true;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.create') === true;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.edit') === true;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.delete') === true;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->hasPermission('cash_advances.delete') === true;
+    }
     protected static ?string $model = CashAdvance::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';

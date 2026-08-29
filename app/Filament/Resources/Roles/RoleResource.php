@@ -27,7 +27,7 @@ class RoleResource extends BaseResource
     protected static ?int $navigationSort = 20;
 
     private static function isAdmin(): bool { return auth()->user()?->is_admin === true; }
-    public static function shouldRegisterNavigation(): bool { return static::isAdmin(); }
+    public static function shouldRegisterNavigation(): bool { return false; }
     public static function canAccess(): bool { return static::isAdmin(); }
     public static function canViewAny(): bool { return static::isAdmin(); }
     public static function canCreate(): bool { return static::isAdmin(); }

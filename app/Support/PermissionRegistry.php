@@ -43,6 +43,7 @@ final class PermissionRegistry
             'inventory_stock_balance_report' => 'تقرير أرصدة المخزون',
             'inventory_movement_report' => 'تقرير حركة المخزون',
             'item_movement' => 'حركة صنف',
+            'purchase_item_sales_tracking' => 'تتبع أصناف المشتريات',
 
 
             'purchase_requests' => 'طلبات الشراء',
@@ -99,6 +100,7 @@ final class PermissionRegistry
             'inventory_stock_balance_report',
             'inventory_movement_report',
             'item_movement',
+            'purchase_item_sales_tracking',
             'stock_balances',
             'due_obligations',
             'bank_statements',

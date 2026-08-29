@@ -152,7 +152,7 @@ Route::get(
 Route::get(
     '/admin/cash-advances/{cashAdvance}/print',
     \App\Http\Controllers\CashAdvancePrintController::class
-)->middleware(['auth', 'permission:cash-advances.print'])->name('cash-advances.print');
+)->middleware(['auth', 'permission:cash_advances.print'])->name('cash-advances.print');
 
 
 Route::get(
@@ -192,12 +192,12 @@ Route::get(
 Route::get(
     '/admin/purchase-item-sales-tracking/print',
     [\App\Http\Controllers\PurchaseItemSalesTrackingExportController::class, 'print']
-)->middleware(['auth', 'permission:purchase-item-sales-tracking.print'])->name('purchase-item-sales-tracking.print');
+)->middleware(['auth', 'permission:purchase_item_sales_tracking.print'])->name('purchase-item-sales-tracking.print');
 
 Route::get(
     '/admin/purchase-item-sales-tracking/excel',
     [\App\Http\Controllers\PurchaseItemSalesTrackingExportController::class, 'excel']
-)->middleware(['auth', 'permission:purchase-item-sales-tracking.print'])->name('purchase-item-sales-tracking.excel');
+)->middleware(['auth', 'permission:purchase_item_sales_tracking.export'])->name('purchase-item-sales-tracking.excel');
 
 
 Route::get(

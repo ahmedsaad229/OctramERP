@@ -15,6 +15,15 @@ use Filament\Schemas\Schema;
 
 class PurchaseItemSalesTracking extends Page
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasPermission('purchase_item_sales_tracking.view') === true;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('purchase_item_sales_tracking.view') === true;
+    }
     protected static string|BackedEnum|null $navigationIcon =
         'heroicon-o-arrows-right-left';
 

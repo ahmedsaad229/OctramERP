@@ -25,6 +25,11 @@ class PurchaseItemSalesTrackingExportController extends Controller
 
     public function print(Request $request): View
     {
+        abort_unless(
+            auth()->user()?->hasPermission('purchase_item_sales_tracking.print') === true,
+            403
+        );
+
         return view('print.purchase-item-sales-tracking', [
             'report' => $this->report($request),
             'settings' => CompanySetting::current(),
@@ -34,6 +39,11 @@ class PurchaseItemSalesTrackingExportController extends Controller
 
     public function excel(Request $request): Response
     {
+        abort_unless(
+            auth()->user()?->hasPermission('purchase_item_sales_tracking.export') === true,
+            403
+        );
+
         $report = $this->report($request);
 
         $html = view(

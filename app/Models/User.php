@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Validation\ValidationException;
 
-#[Fillable(['name', 'email', 'mobile', 'job_title', 'password', 'is_active', 'is_admin', 'role_id'])]
+#[Fillable(['name', 'email', 'mobile', 'job_title', 'password', 'is_active', 'is_admin', 'role_id', 'permissions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -86,7 +86,15 @@ class User extends Authenticatable implements FilamentUser
             return true;
         }
 
-        return $this->role?->hasPermission($permission) === true;
+        $permissions = $this->permissions;
+
+        // Null means this user has no individual permission set yet,
+        // so keep the role as a safe fallback.
+        if ($permissions === null) {
+            return $this->role?->hasPermission($permission) === true;
+        }
+
+        return in_array($permission, $permissions, true);
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -108,6 +116,7 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'is_active' => 'boolean',
             'is_admin' => 'boolean',
+            'permissions' => 'array',
         ];
     }
 }
