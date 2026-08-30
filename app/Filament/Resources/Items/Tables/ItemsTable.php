@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Items\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Filament\Actions\ProtectedDeleteBulkAction;
 use App\Filament\Resources\PurchaseRequests\PurchaseRequestResource;
 use App\Filament\Resources\SalesQuotations\SalesQuotationResource;
@@ -75,6 +77,9 @@ class ItemsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

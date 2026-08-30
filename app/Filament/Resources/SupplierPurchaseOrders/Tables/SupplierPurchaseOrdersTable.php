@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\SupplierPurchaseOrders\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+use App\Services\SupplierPurchaseOrderService;
+
 
 
 use Filament\Actions\Action;
@@ -131,7 +134,11 @@ class SupplierPurchaseOrdersTable
                         )
                     )
                     ->openUrlInNewTab(),
-EditAction::make()])
+EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف')
+                    ->using(fn (SupplierPurchaseOrder $record): bool => app(SupplierPurchaseOrderService::class)->delete($record))])
             ->emptyStateHeading('لا توجد أوامر توريد');
     }
 }

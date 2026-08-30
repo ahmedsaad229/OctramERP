@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Suppliers\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -47,6 +49,9 @@ class SuppliersTable
             ])
             ->recordActions([
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

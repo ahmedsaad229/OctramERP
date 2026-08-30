@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CustomerFollowUps\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Models\CustomerFollowUp;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -150,6 +152,11 @@ class CustomerFollowUpsTable
                         )
                     )
                     ->openUrlInNewTab(),
+
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ]);
     }
 }

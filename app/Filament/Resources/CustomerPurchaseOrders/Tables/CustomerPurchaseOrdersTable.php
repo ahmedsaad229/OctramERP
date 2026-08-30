@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CustomerPurchaseOrders\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 
 use Filament\Actions\Action;
 use App\Models\CustomerPurchaseOrder;
@@ -51,6 +53,11 @@ class CustomerPurchaseOrdersTable
             EditAction::make()
                 ->iconButton()
                 ->tooltip('تعديل'),
-        ]);
+
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
+            ]);
     }
 }

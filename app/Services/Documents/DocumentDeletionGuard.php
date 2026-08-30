@@ -4,6 +4,7 @@ namespace App\Services\Documents;
 
 use App\Exceptions\DocumentDeletionBlockedException;
 use App\Models\Category;
+use App\Models\CashAdvance;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\PurchaseInvoice;
@@ -24,6 +25,7 @@ class DocumentDeletionGuard
     public function assertCanDelete(Model $document): void
     {
         match (true) {
+            $document instanceof CashAdvance => $this->assertCashAdvanceCanBeDeleted($document),
             $document instanceof PurchaseRequest => $this->assertPurchaseRequestCanBeDeleted($document),
             $document instanceof SupplierPurchaseOrder => $this->assertSupplierPurchaseOrderCanBeDeleted($document),
             $document instanceof PurchaseInvoice => $this->assertPurchaseInvoiceCanBeDeleted($document),
@@ -40,6 +42,24 @@ class DocumentDeletionGuard
         };
     }
 
+    private function assertCashAdvanceCanBeDeleted(CashAdvance $advance): void
+    {
+        /*
+         * System administrators may delete the cash advance even when
+         * settlements exist. Normal users are blocked when the advance
+         * has any settlement / expense / return movement.
+         */
+        if (auth()->user()?->is_admin === true) {
+            return;
+        }
+
+        if ($advance->settlements()->exists()) {
+            throw new DocumentDeletionBlockedException(
+                'لا يمكن حذف العهدة النقدية',
+                'لا يمكن حذف العهدة لوجود تسويات أو مصروفات أو مبالغ مرتجعة مرتبطة بها. مدير النظام فقط يمكنه حذف عهدة عليها حركات.'
+            );
+        }
+    }
     public function assertPurchaseRequestCanBeDeleted(PurchaseRequest $request): void
     {
         $order = $this->first('supplier_purchase_orders', 'purchase_request_id', $request->getKey(), 'code');

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\OpeningStockVouchers\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
@@ -54,6 +56,9 @@ class OpeningStockVouchersTable
             ->recordActions([
 
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
 
             ])
 

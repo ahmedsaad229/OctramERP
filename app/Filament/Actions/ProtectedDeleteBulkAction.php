@@ -16,16 +16,16 @@ class ProtectedDeleteBulkAction extends DeleteBulkAction
         parent::setUp();
 
         /*
-         * Keep Filament's normal delete-any authorization active.
+         * Do not call authorize('deleteAny') directly.
+         * Leaving authorization unset allows Filament to use the
+         * Resource's canDeleteAny() authorization.
          */
-        $this->authorize('deleteAny');
-
         $this->action(function (Collection $records): void {
-            /*
-             * Defense in depth:
-             * authorization is checked again when executing.
-             */
-            $this->authorize('deleteAny');
+            if (! $this->isAuthorized()) {
+                $this->failure();
+
+                return;
+            }
 
             try {
                 $guard = app(DocumentDeletionGuard::class);

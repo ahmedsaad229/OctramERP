@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\JournalEntries\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Models\JournalEntry;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -82,6 +84,11 @@ class JournalEntriesTable
                 ViewAction::make()->label('عرض'),
                 EditAction::make()
                     ->label('تعديل'),
+
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ]);
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\PurchaseInvoices\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+use App\Services\PurchaseInvoiceService;
+
 
 use Filament\Actions\Action;
 use App\Enums\PaymentType;
@@ -124,6 +127,10 @@ class PurchaseInvoicesTable
                     )
                     ->openUrlInNewTab(),
 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف')
+                    ->using(fn (PurchaseInvoice $record): bool => app(PurchaseInvoiceService::class)->delete($record)),
             ]);
     }
 

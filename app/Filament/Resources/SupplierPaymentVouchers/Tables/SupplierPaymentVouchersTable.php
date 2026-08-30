@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SupplierPaymentVouchers\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 
 use Filament\Actions\Action;
 use App\Enums\PaymentMethod;
@@ -130,6 +132,9 @@ class SupplierPaymentVouchersTable
                     )
                     ->openUrlInNewTab(),
 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CashAdvances\Pages;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Filament\Resources\CashAdvances\CashAdvanceResource;
 use App\Models\CashAdvance;
 use Filament\Actions\Action;
@@ -35,6 +36,8 @@ class EditCashAdvance extends EditRecord
                         route('cash-advances.print', $this->record)
                 )
                 ->openUrlInNewTab(),
+
+            ProtectedDeleteAction::make(),
         ];
     }
 }

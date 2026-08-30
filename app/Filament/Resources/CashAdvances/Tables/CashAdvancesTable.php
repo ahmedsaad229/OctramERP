@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CashAdvances\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
 use App\Models\CashAdvance;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -85,6 +86,10 @@ class CashAdvancesTable
             ])
             ->recordActions([
                 EditAction::make(),
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ]);
     }
 }

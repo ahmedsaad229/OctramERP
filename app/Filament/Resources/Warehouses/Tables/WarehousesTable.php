@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Warehouses\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -52,6 +54,9 @@ class WarehousesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

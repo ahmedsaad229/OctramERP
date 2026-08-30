@@ -15,18 +15,26 @@ class ProtectedDeleteAction extends DeleteAction
         parent::setUp();
 
         /*
-         * Keep Filament's normal resource authorization active.
-         * The action must not be visible or executable when the
-         * current resource denies deletion for the record.
+         * Do not call authorize('delete') here.
+         *
+         * Filament interprets that as a direct Laravel Gate check against
+         * the record, which bypasses our Resource::canDelete() permission
+         * system.
+         *
+         * Leaving the action authorization unset allows Filament to use
+         * the Resource's default action authorization.
          */
-        $this->authorize('delete');
-
         $this->action(function (): void {
             /*
-             * Defense in depth:
-             * re-run authorization when the action is actually executed.
+             * Authorization is also checked by Filament before the action
+             * can be executed. This explicit check provides defense in depth
+             * while still using the Resource authorization response.
              */
-            $this->authorize('delete');
+            if (! $this->isAuthorized()) {
+                $this->failure();
+
+                return;
+            }
 
             try {
                 $result = $this->process(

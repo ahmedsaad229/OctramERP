@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Units\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Filament\Actions\ProtectedDeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -43,6 +45,9 @@ class UnitsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

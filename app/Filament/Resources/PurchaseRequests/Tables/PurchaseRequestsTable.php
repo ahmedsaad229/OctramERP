@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PurchaseRequests\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 
 use Filament\Actions\Action;
 use App\Models\PurchaseRequest;
@@ -118,7 +120,8 @@ class PurchaseRequestsTable
                         });
                     }),
             ])
-            ->recordActions([                Action::make('print')
+            ->recordActions([
+                Action::make('print')
                     ->label('طباعة')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
@@ -129,7 +132,13 @@ class PurchaseRequestsTable
                         )
                     )
                     ->openUrlInNewTab(),
-EditAction::make()])
+
+                EditAction::make(),
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
+            ])
             ->emptyStateHeading('لا توجد طلبات شراء');
     }
 }

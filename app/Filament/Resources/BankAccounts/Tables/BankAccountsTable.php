@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\BankAccounts\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Models\BankAccount;
 use App\Services\BankTransactionService;
 use Filament\Actions\BulkActionGroup;
@@ -60,6 +62,9 @@ class BankAccountsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Enums\PaymentType;
 use App\Enums\TaxType;
 use App\Models\SalesInvoice;
@@ -140,6 +142,11 @@ class SalesInvoicesTable
                         $record
                     ))
                     ->openUrlInNewTab(),
+
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
             ]);
     }
 

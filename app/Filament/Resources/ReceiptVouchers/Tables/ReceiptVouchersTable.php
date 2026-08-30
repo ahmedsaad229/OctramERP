@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ReceiptVouchers\Tables;
 
+use App\Filament\Actions\ProtectedDeleteAction;
+
 use App\Enums\PaymentMethod;
 use App\Models\ReceiptVoucher;
 use Filament\Actions\EditAction;
@@ -96,6 +98,11 @@ class ReceiptVouchersTable
             )
         )
         ->openUrlInNewTab(),
-]);
+
+
+                ProtectedDeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('حذف'),
+            ]);
     }
 }
